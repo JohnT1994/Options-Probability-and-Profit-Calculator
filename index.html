@@ -110,9 +110,6 @@
     <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
   </form>
 
-  <div id="results">
-    <div class="hedge-card" id="hedgeMsg"></div>
-
     <div class="summary-grid">
       <div class="summary-item"><label>Prob. of Profit</label><span id="pop">--</span></div>
       <div class="summary-item"><label>Total Cost</label><span id="resCost">--</span></div>
@@ -325,9 +322,10 @@ function drawWaveChart(S, K, type, prem, qty) {
       grid: { color: '#333' }, 
       ticks: { color: '#ccc' },
       title: { display: true, text: 'Stock Price ($)', color: '#888' }
+   }
     }
-  }
-}
+  }); // This closes payoffChart
+} // This closes drawWaveChart
 </script>
 </body>
 </html>
