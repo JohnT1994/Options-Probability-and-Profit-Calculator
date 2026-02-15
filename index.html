@@ -287,17 +287,46 @@ function drawWaveChart(S, K, type, prem, qty) {
         pointRadius: 0 
       }]
     },
-    options: { 
-      scales: { 
-        y: { grid: { color: '#333' }, ticks: { color: '#ccc' } },
-        x: { 
-          reverse: (type === 'put'), // THIS ROW INVERTS THE AXIS FOR PUTS ONLY
-          grid: { color: '#333' }, 
-          ticks: { color: '#ccc' } 
-        } 
+    options: {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: {
+    mode: 'index',      // Finds the nearest item on the x-axis
+    intersect: false,   // Allows the tooltip to show even if you aren't exactly on the line
+  },
+  plugins: {
+    legend: { display: true },
+    tooltip: {
+      enabled: true,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      titleColor: '#4db8ff',
+      bodyColor: '#fff',
+      callbacks: {
+        // This formats the labels inside the hover box
+        label: function(context) {
+          let label = context.dataset.label || '';
+          if (label) { label += ': '; }
+          if (context.parsed.y !== null) {
+            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+          }
+          return label;
+        }
       }
     }
-  });
+  },
+  scales: {
+    y: { 
+      grid: { color: '#333' }, 
+      ticks: { color: '#ccc' },
+      title: { display: true, text: 'Profit / Loss ($)', color: '#888' }
+    },
+    x: { 
+      reverse: (type === 'put'), 
+      grid: { color: '#333' }, 
+      ticks: { color: '#ccc' },
+      title: { display: true, text: 'Stock Price ($)', color: '#888' }
+    }
+  }
 }
 </script>
 </body>
