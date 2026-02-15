@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Options POP, Greeks & IV Solver</title>
   <style>
-    :root { --primary: #0066cc; --bg: #000000; --text: #ffffff; --success: #28a745; --accent: #6f42c1; }
-    body { font-family: 'Segoe UI', sans-serif; background-image: url('https://i.imgur.com/nVWumk7.png'); background-size: cover; background-position: center; background-attachment: fixed;
+    :root { 
+      --primary: #007bff; 
+      --success: #28a745; 
+      --accent: #6f42c1; 
+      --glass: rgba(0, 0, 0, 0.8); 
+    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-image: url('https://i.imgur.com/nVWumk7.png'); background-size: cover; background-position: center; background-attachment: fixed;
     color: #ffffff; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-    .container { background: rgba(0, 0, 0, 0.85); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .container { background: rgba(0, 0, 0, 0.85); padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.1); }
+    h1 { text-align: center; margin-bottom: 1.5rem; color: #fff; }
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
     .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end; grid-column: span 2; }
     .ticket-row div { flex: 1; }
