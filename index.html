@@ -179,15 +179,24 @@ const crosshairPlugin = {
 async function refreshVIX() {
   const vixElement = document.getElementById('vixVal');
   const timeElement = document.getElementById('vixTime');
+  
   const proxy = "https://corsproxy.io/?";
   const target = encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX");
+
   try {
     const response = await fetch(proxy + target);
     const data = await response.json();
     const price = data.chart.result[0].meta.regularMarketPrice;
-    if (price) { vixElement.textContent = price.toFixed(2); }
-  } catch (e) { console.warn("VIX fail"); vixElement.textContent = "18.50"; }
-  timeElement.textContent = "Synced: " + new Date().toLocaleTimeString();
+    
+    if (price) {
+      vixElement.textContent = price.toFixed(2);
+      // Success message
+      timeElement.textContent = "Live Sync with Yahoo Finance: " + new Date().toLocaleTimeString();
+    }
+  } catch (e) {
+    vixElement.textContent = "18.50";
+    timeElement.textContent = "Yahoo Feed Offline (Showing Fallback)";
+  }
 }
 refreshVIX();
   
