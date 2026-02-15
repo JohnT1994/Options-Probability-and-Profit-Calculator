@@ -58,10 +58,6 @@
     .summary-item label { color: #888; text-transform: uppercase; font-size: 0.65rem; }
     .summary-item span { font-size: 1.2rem; font-weight: bold; display: block; margin-top: 5px; }
 
-    .hedge-card { 
-      background: rgba(40, 167, 69, 0.15); border: 1px solid var(--success); 
-      padding: 1.2rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center;
-    }
 
     .chart-container { background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); }
 
@@ -270,7 +266,9 @@ function drawWaveChart(S, K, type, prem, qty) {
   const start = S * 0.5, end = S * 1.5;
   for (let p = start; p <= end; p += (end - start)/60) {
     labels.push(p.toFixed(2));
-    let profit = type === 'call' ? (Math.max(0, p - K) - prem) * 100 * qty : (Math.max(0, K - p) - prem) * 100 * qty;
+    // REVERT LOGIC: Call = (Price - Strike), Put = (Strike - Price)
+    let intrinsic = type === 'call' ? (p - K) : (K - p);
+    let profit = (Math.max(0, intrinsic) - prem) * 100 * qty;
     data.push(profit);
   }
   if (payoffChart) payoffChart.destroy();
