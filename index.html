@@ -29,9 +29,11 @@
     .ticker-row div { flex: 1; }
 
     label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #ccc; }
+    
+    /* RETURN TO WHITE BOX STYLE */
     input, select { 
-      width: 100%; padding: 0.7rem; border: 1px solid #444; border-radius: 8px; 
-      background: #fff; color: #000; font-size: 0.95rem;
+      width: 100%; padding: 0.7rem; border: 1px solid #ccc; border-radius: 8px; 
+      background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
     }
 
     button { padding: 0.8rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
@@ -45,7 +47,7 @@
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .summary-item { background: rgba(255, 255, 255, 0.07); padding: 1rem; border-radius: 12px; border-bottom: 3px solid var(--primary); }
     .summary-item label { color: #999; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 1px; }
-    .summary-item span { font-size: 1.2rem; font-weight: bold; display: block; margin-top: 5px; }
+    .summary-item span { font-size: 1.1rem; font-weight: bold; display: block; margin-top: 5px; }
 
     .chart-container { background: rgba(0,0,0,0.4); padding: 1.2rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); }
 
@@ -55,7 +57,7 @@
       text-align: center; cursor: help; border: 1px solid rgba(255,255,255,0.05); 
     }
     .greek-name { font-size: 0.75rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
-    .greek-val { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .greek-val { font-size: 1rem; font-weight: 700; color: #fff; }
 
     .scenario-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.85rem; }
     .scenario-table th, td { padding: 10px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
@@ -78,11 +80,17 @@
     <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
     <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" min="1" /></div>
     <div><label>Strike Price ($)</label><input type="number" id="strike" step="0.01" /></div>
-    <div><label>Option Type</label><select id="type"><option value="call">Call (Betting UP)</option><option value="put">Put (Betting DOWN)</option></select></div>
+    <div>
+      <label>Option Type</label>
+      <select id="type">
+        <option value="call">Call</option>
+        <option value="put">Put</option>
+      </select>
+    </div>
     <div><label>Expiration Date</label><input type="date" id="expiry" /></div>
     <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
     <div><label>Market Price (Premium)</label><input type="number" id="premium" step="0.01" /></div>
-    <div><label>Implied Volatility (%)</label><input type="number" id="iv" step="0.01" placeholder="Solve or enter" /></div>
+    <div><label>Implied Volatility (%)</label><input type="number" id="iv" step="0.01" placeholder="Solve or enter manual" /></div>
 
     <button type="button" class="btn-solve" onclick="solveForIV()">1. Solve for IV</button>
     <button type="button" class="btn-calc" onclick="runAnalysis()">2. Calculate Payoff</button>
@@ -121,7 +129,6 @@
 const API_KEY = "d68t7spr01qs7u9judagd68t7spr01qs7u9judb0";
 let payoffChart = null;
 
-// Auto-fetch 10Y Treasury Rate on load
 async function loadTreasuryRate() {
   try {
     const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=^TNX&token=${API_KEY}`);
@@ -131,7 +138,6 @@ async function loadTreasuryRate() {
 }
 loadTreasuryRate();
 
-// Math Helpers
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
@@ -197,7 +203,6 @@ function runAnalysis() {
   document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
   document.getElementById('resBreak').textContent = (type === 'call' ? K + prem : K - prem).toFixed(2);
 
-  // Greeks
   document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
   document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
   document.getElementById('t').textContent = ((-(S * iv * normPDF(d1)) / (2 * Math.sqrt(T)) / 365)).toFixed(3);
@@ -246,13 +251,16 @@ function drawWaveChart(S, K, type, prem, qty) {
     options: { 
       responsive: true,
       plugins: { 
-        legend: { labels: { color: '#fff' } },
-        // Visual Breakeven Line
-        annotation: { annotations: { line1: { type: 'line', yMin: 0, yMax: 0, borderColor: 'white', borderWidth: 2 } } }
+        legend: { labels: { color: '#fff' } }
       },
       scales: { 
-        y: { grid: { color: '#444' }, ticks: { color: '#ccc' }, title: { display: true, text: 'Profit / Loss ($)', color: '#fff' } },
-        x: { grid: { color: '#444' }, ticks: { color: '#ccc' }, title: { display: true, text: 'Stock Price ($)', color: '#fff' } }
+        y: { 
+          grid: { color: '#444' }, 
+          ticks: { color: '#ccc' },
+          // This creates the zero-line/breakeven visual
+          border: { display: true, color: '#fff', width: 2 } 
+        },
+        x: { grid: { color: '#444' }, ticks: { color: '#ccc' } }
       }
     }
   });
