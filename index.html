@@ -164,7 +164,7 @@ async function refreshVIX() {
   
   try {
     // Adding a timestamp prevents the browser from loading a 'stuck' cached response
-    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=^VIX&token=${API_KEY}&_=${new Date().getTime()}`);
+    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=VIX&token=${API_KEY}&_=${new Date().getTime()}`);
     const data = await response.json();
     
     // Check if data exists and isn't zero (Finnhub sometimes returns 0 for indices off-hours)
