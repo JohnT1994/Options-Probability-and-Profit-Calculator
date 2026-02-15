@@ -264,26 +264,38 @@ function drawWaveChart(S, K, type, prem, qty) {
   const ctx = document.getElementById('payoffChart').getContext('2d');
   const labels = [], data = [];
   const start = S * 0.5, end = S * 1.5;
+
   for (let p = start; p <= end; p += (end - start)/60) {
     labels.push(p.toFixed(2));
-    // REVERT LOGIC: Call = (Price - Strike), Put = (Strike - Price)
     let intrinsic = type === 'call' ? (p - K) : (K - p);
     let profit = (Math.max(0, intrinsic) - prem) * 100 * qty;
     data.push(profit);
   }
+
   if (payoffChart) payoffChart.destroy();
   payoffChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [{ label: 'Profit / Loss ($)', data: data, borderColor: '#4db8ff', backgroundColor: 'rgba(77, 184, 255, 0.1)', fill: true, tension: 0.3, pointRadius: 0 }]
+      datasets: [{ 
+        label: 'Profit / Loss ($)', 
+        data: data, 
+        borderColor: '#4db8ff', 
+        backgroundColor: 'rgba(77, 184, 255, 0.1)', 
+        fill: true, 
+        tension: 0.3, 
+        pointRadius: 0 
+      }]
     },
     options: { 
       scales: { 
-        y: { grid: { color: '#333' }, ticks: { color: '#ccc' }, border: { color: '#fff', width: 2 } },
-        x: { grid: { color: '#333' }, ticks: { color: '#ccc' } } 
-      },
-      plugins: { legend: { labels: { color: '#fff' } } }
+        y: { grid: { color: '#333' }, ticks: { color: '#ccc' } },
+        x: { 
+          reverse: (type === 'put'), // THIS ROW INVERTS THE AXIS FOR PUTS ONLY
+          grid: { color: '#333' }, 
+          ticks: { color: '#ccc' } 
+        } 
+      }
     }
   });
 }
