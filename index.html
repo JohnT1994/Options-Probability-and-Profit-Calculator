@@ -4,113 +4,134 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Options POP, Greeks & IV Solver</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { 
-      --primary: #007bff; 
-      --success: #28a745; 
-      --accent: #6f42c1; 
-      --glass: rgba(0, 0, 0, 0.8); 
+      --primary: #007bff; --success: #28a745; --accent: #6f42c1; --danger: #ff4d4d;
+      --glass: rgba(0, 0, 0, 0.88); 
     }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-image: url('https://i.imgur.com/nVWumk7.png'); background-size: cover; background-position: center; background-attachment: fixed;
-    color: #ffffff; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-    .container { background: rgba(0, 0, 0, 0.85); padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.1); }
-    h1 { text-align: center; margin-bottom: 1.5rem; color: #fff; }
+
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-image: url('https://i.imgur.com/nVWumk7.png'); 
+      background-size: cover; background-position: center; background-attachment: fixed;
+      color: #ffffff; max-width: 950px; margin: 2rem auto; padding: 0 1rem; 
+    }
+
+    .container { 
+      background: var(--glass); backdrop-filter: blur(15px);
+      padding: 2rem; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+    }
+
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
-    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end; grid-column: span 2; }
-    .ticket-row div { flex: 1; }
-    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #ffffff; }
-    input, select { width: 100%; padding: 0.6rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    .ticker-row { display: flex; gap: 0.5rem; align-items: flex-end; grid-column: span 2; }
+    .ticker-row div { flex: 1; }
+
+    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #ccc; }
+    input, select { 
+      width: 100%; padding: 0.7rem; border: 1px solid #444; border-radius: 8px; 
+      background: #fff; color: #000; font-size: 0.95rem;
+    }
+
+    button { padding: 0.8rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-fetch { background: var(--success); color: white; }
+    .btn-solve { background: var(--accent); color: white; width: 100%; }
+    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1rem; }
+    button:hover { filter: brightness(1.2); transform: translateY(-1px); }
+
+    #results { margin-top: 2rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1.5rem; }
     
-    button { padding: 0.7rem 1rem; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    .btn-fetch { background: var(--success); color: black; }
-    .btn-solve { background: var(--accent); color: white; width: 100%; grid-column: span 1; }
-    .btn-calc { background: var(--primary); color: white; width: 100%; grid-column: span 1; font-size: 1rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .summary-item { background: rgba(255, 255, 255, 0.07); padding: 1rem; border-radius: 12px; border-bottom: 3px solid var(--primary); }
+    .summary-item label { color: #999; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 1px; }
+    .summary-item span { font-size: 1.2rem; font-weight: bold; display: block; margin-top: 5px; }
 
-    #profile { display: flex; align-items: center; gap: 1rem; margin: 1rem 0; padding: 0.8rem; : #eef4ff; border-radius: 8px; display: none; }
-    #profile img { height: 30px; border-radius: 4px; }
-
-    #results { margin-top: 2rem; display: none; border-top: 2px solid #eee; padding-top: 1.5rem; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .summary-item { background: #edf2f5; padding: 0.8rem; border-radius: 8px; border-left: 4px solid var(--primary); }
-    .summary-item label { color: #cccccc; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-    .summary-item span { font-size: 1.1rem; font-weight: bold; display: block; margin-top: 4px; }
+    .chart-container { background: rgba(0,0,0,0.4); padding: 1.2rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); }
 
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
-    .greek-card { background: #fff; border: 1px solid #ddd; padding: 0.8rem; border-radius: 8px; text-align: center; }
-    .greek-name { font-size: 0.7rem; color: #777; font-weight: bold; }
-    .greek-val { display: block; font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .greek-card { 
+      background: rgba(255, 255, 255, 0.1); padding: 1rem 0.5rem; border-radius: 10px; 
+      text-align: center; cursor: help; border: 1px solid rgba(255,255,255,0.05); 
+    }
+    .greek-name { font-size: 0.75rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
+    .greek-val { font-size: 1.1rem; font-weight: 700; color: #fff; }
 
-    @media (max-width: 600px) { .grid-form, .greeks-grid { grid-template-columns: 1fr; } .ticket-row { flex-direction: column; } .btn-solve, .btn-calc { grid-column: span 1; } }
+    .scenario-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.85rem; }
+    .scenario-table th, td { padding: 10px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+    .scenario-table th { background: rgba(255,255,255,0.05); color: #aaa; }
+    
+    @media (max-width: 600px) { .grid-form, .greeks-grid { grid-template-columns: 1fr; } .ticker-row { flex-direction: column; } }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>Options Strategy Builder & IV Solver</h1>
-
-  <div id="profile">
-    <img id="compLogo" src="">
-    <span id="compName"></span>
-  </div>
+  <h1 style="text-align:center; margin-top:0;">Options Profit Engine</h1>
 
   <form id="optionForm" class="grid-form">
-    <div class="ticket-row">
-      <div>
-        <label>Ticket Symbol</label>
-        <input type="text" id="symbol" placeholder="TSLA" required />
-      </div>
-      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Price</button>
+    <div class="ticker-row">
+      <div><label>Ticker Symbol</label><input type="text" id="symbol" placeholder="e.g. NVDA" /></div>
+      <button type="button" class="btn-fetch" onclick="fetchTickerData()">Get Live Price</button>
     </div>
 
     <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
-    <div><label>Quantity (Contracts)</label><input type="number" id="qty" value="1" min="1" /></div>
-    <div><label>Strike Price ($)</label><input type="number" id="strike" step="0.01" required /></div>
-    <div>
-      <label>Option Type</label>
-      <select id="type">
-        <option value="call">Call</option>
-        <option value="put">Put</option>
-      </select>
-    </div>
-    <div><label>Expiration Date</label><input type="date" id="expiry" required /></div>
-    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.5" /></div>
-    
-    <div>
-        <label>Option Market Price ($)</label>
-        <input type="number" id="premium" step="0.01" placeholder="Current premium" required />
-    </div>
-    <div>
-        <label>Implied Volatility (%)</label>
-        <input type="number" id="iv" step="0.01" placeholder="Solve or enter manual" />
-    </div>
+    <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" min="1" /></div>
+    <div><label>Strike Price ($)</label><input type="number" id="strike" step="0.01" /></div>
+    <div><label>Option Type</label><select id="type"><option value="call">Call (Betting UP)</option><option value="put">Put (Betting DOWN)</option></select></div>
+    <div><label>Expiration Date</label><input type="date" id="expiry" /></div>
+    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
+    <div><label>Market Price (Premium)</label><input type="number" id="premium" step="0.01" /></div>
+    <div><label>Implied Volatility (%)</label><input type="number" id="iv" step="0.01" placeholder="Solve or enter" /></div>
 
-    <button type="button" class="btn-solve" onclick="solveForIV()">1. Find IV from Price</button>
-    <button type="button" class="btn-calc" onclick="runAnalysis()">2. Calculate Greeks</button>
+    <button type="button" class="btn-solve" onclick="solveForIV()">1. Solve for IV</button>
+    <button type="button" class="btn-calc" onclick="runAnalysis()">2. Calculate Payoff</button>
   </form>
 
   <div id="results">
     <div class="summary-grid">
-      <div class="summary-item"><label>Prob. of Profit</label><span id="pop">--</span></div>
-      <div class="summary-item"><label>Total Cost</label><span id="resCost">--</span></div>
-      <div class="summary-item"><label>Max Profit</label><span id="resProfit">--</span></div>
-      <div class="summary-item"><label>Max Loss</label><span id="resLoss">--</span></div>
-      <div class="summary-item"><label>Breakeven</label><span id="resBreak">--</span></div>
+      <div class="summary-item"><label>Chance of Profit</label><span id="pop">--</span></div>
+      <div class="summary-item"><label>Total Investment</label><span id="resCost">--</span></div>
+      <div class="summary-item"><label>Max Potential Profit</label><span id="resProfit">--</span></div>
+      <div class="summary-item"><label>Max Potential Loss</label><span id="resLoss">--</span></div>
+      <div class="summary-item"><label>Breakeven Price</label><span id="resBreak">--</span></div>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="payoffChart"></canvas>
     </div>
 
     <div class="greeks-grid">
-      <div class="greek-card"><span class="greek-name">DELTA</span><span class="greek-val" id="d"></span></div>
-      <div class="greek-card"><span class="greek-name">GAMMA</span><span class="greek-val" id="g"></span></div>
-      <div class="greek-card"><span class="greek-name">THETA</span><span class="greek-val" id="t"></span></div>
-      <div class="greek-card"><span class="greek-name">VEGA</span><span class="greek-val" id="v"></span></div>
-      <div class="greek-card"><span class="greek-name">RHO</span><span class="greek-val" id="r"></span></div>
+      <div class="greek-card" title="DELTA: For every $1 the stock goes up, your profit goes up by this much."><span class="greek-name">DELTA</span><span class="greek-val" id="d"></span></div>
+      <div class="greek-card" title="GAMMA: The turbocharger. It shows how much faster you win or lose as the stock moves."><span class="greek-name">GAMMA</span><span class="greek-val" id="g"></span></div>
+      <div class="greek-card" title="THETA: The daily rent. This is how much money leaks out of your pocket every single day."><span class="greek-name">THETA</span><span class="greek-val" id="t"></span></div>
+      <div class="greek-card" title="VEGA: The fear gauge. If investors get scared and Volatility rises, your option gains value."><span class="greek-name">VEGA</span><span class="greek-val" id="v"></span></div>
+      <div class="greek-card" title="RHO: The bank rate. How much your price changes if interest rates move."><span class="greek-name">RHO</span><span class="greek-val" id="r"></span></div>
     </div>
+
+    <h3 style="font-size: 1rem; margin-top: 2rem; color: #4db8ff;">What if Volatility Changes? (Price Impact)</h3>
+    <table class="scenario-table">
+      <thead><tr><th>IV Change</th><th>New IV Level</th><th>New Option Price</th></tr></thead>
+      <tbody id="scenarioBody"></tbody>
+    </table>
   </div>
 </div>
 
 <script>
 const API_KEY = "d68t7spr01qs7u9judagd68t7spr01qs7u9judb0";
+let payoffChart = null;
 
-// --- Black-Scholes Core ---
+// Auto-fetch 10Y Treasury Rate on load
+async function loadTreasuryRate() {
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=^TNX&token=${API_KEY}`);
+    const data = await res.json();
+    if (data.c) document.getElementById('rf').value = data.c.toFixed(2);
+  } catch(e) { console.log("Treasury sync skipped."); }
+}
+loadTreasuryRate();
+
+// Math Helpers
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
@@ -120,96 +141,121 @@ const normCDF = (x) => {
 };
 
 function blackScholes(S, K, T, r, sigma, type) {
-    if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
-    const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
-    const d2 = d1 - sigma * Math.sqrt(T);
-    if (type === 'call') return S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2);
-    return K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
+  if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
+  const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+  const d2 = d1 - sigma * Math.sqrt(T);
+  return type === 'call' ? (S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2)) : (K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1));
 }
 
-// --- IV Solver (Newton-Raphson) ---
+async function fetchTickerData() {
+  const sym = document.getElementById('symbol').value.toUpperCase();
+  if(!sym) return alert("Enter ticker");
+  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`);
+  const data = await res.json();
+  if (data.c) document.getElementById('stockPrice').value = data.c;
+}
+
 function solveForIV() {
-    const S = parseFloat(document.getElementById('stockPrice').value);
-    const K = parseFloat(document.getElementById('strike').value);
-    const premium = parseFloat(document.getElementById('premium').value);
-    const r = parseFloat(document.getElementById('rf').value) / 100;
-    const type = document.getElementById('type').value;
-    const expiry = new Date(document.getElementById('expiry').value);
-    const T = (expiry - new Date()) / (1000 * 60 * 60 * 24 * 365.25);
-
-    if (!S || !K || !premium || T <= 0) return alert("Please fill Price, Strike, Premium, and Date first.");
-
-    let sigma = 0.5; // Initial guess (50%)
-    for (let i = 0; i < 100; i++) {
-        let price = blackScholes(S, K, T, r, sigma, type);
-        let diff = premium - price;
-        if (Math.abs(diff) < 0.0001) break;
-        
-        // Vega (derivative for Newton-Raphson)
-        let d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
-        let vega = S * Math.sqrt(T) * normPDF(d1);
-        sigma = sigma + diff / vega;
-        
-        if (sigma <= 0) { sigma = 0.0001; break; }
-    }
-    
-    document.getElementById('iv').value = (sigma * 100).toFixed(2);
-    runAnalysis(); // Auto-run analysis after solving
-}
-
-async function fetchTicketData() {
-  const symbol = document.getElementById('symbol').value.toUpperCase();
-  if (!symbol) return alert("Enter a symbol first.");
-  try {
-    const qRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${API_KEY}`);
-    const qData = await qRes.json();
-    if (qData.c) document.getElementById('stockPrice').value = qData.c.toFixed(2);
-    
-    const pRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${API_KEY}`);
-    const pData = await pRes.json();
-    if (pData.name) {
-      document.getElementById('profile').style.display = 'flex';
-      document.getElementById('compName').textContent = pData.name;
-      document.getElementById('compLogo').src = pData.logo;
-    }
-  } catch (e) { alert("Error fetching data."); }
+  const S = parseFloat(document.getElementById('stockPrice').value);
+  const K = parseFloat(document.getElementById('strike').value);
+  const prem = parseFloat(document.getElementById('premium').value);
+  const r = parseFloat(document.getElementById('rf').value) / 100;
+  const type = document.getElementById('type').value;
+  const T = (new Date(document.getElementById('expiry').value) - new Date()) / 31557600000;
+  
+  if (!S || !K || !prem || T <= 0) return alert("Check inputs & Expiry date");
+  
+  let sigma = 0.5;
+  for (let i = 0; i < 60; i++) {
+    let diff = prem - blackScholes(S, K, T, r, sigma, type);
+    if (Math.abs(diff) < 0.0001) break;
+    let d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+    sigma += diff / (S * Math.sqrt(T) * normPDF(d1));
+  }
+  document.getElementById('iv').value = (Math.abs(sigma) * 100).toFixed(2);
+  runAnalysis();
 }
 
 function runAnalysis() {
   const S = parseFloat(document.getElementById('stockPrice').value);
   const K = parseFloat(document.getElementById('strike').value);
+  const iv = parseFloat(document.getElementById('iv').value) / 100;
+  const r = parseFloat(document.getElementById('rf').value) / 100;
+  const prem = parseFloat(document.getElementById('premium').value);
   const qty = parseInt(document.getElementById('qty').value);
   const type = document.getElementById('type').value;
-  const iv = parseFloat(document.getElementById('iv').value) / 100;
-  const rf = parseFloat(document.getElementById('rf').value) / 100;
-  const premium = parseFloat(document.getElementById('premium').value);
-  const expiry = new Date(document.getElementById('expiry').value);
-  
-  const T = (expiry - new Date()) / (1000 * 60 * 60 * 24 * 365.25);
-  if (T <= 0 || isNaN(S) || isNaN(iv)) return alert("Check inputs. Ensure IV is solved or entered.");
+  const T = (new Date(document.getElementById('expiry').value) - new Date()) / 31557600000;
 
-  const d1 = (Math.log(S/K) + (rf + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
+  if (isNaN(iv)) return alert("Solve IV first.");
+
+  const d1 = (Math.log(S/K) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
   const d2 = d1 - (iv * Math.sqrt(T));
 
-  const pop = (type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100;
-  const delta = type === 'call' ? normCDF(d1) : normCDF(d1) - 1;
-  const gamma = normPDF(d1) / (S * iv * Math.sqrt(T));
-  const vega = (S * Math.sqrt(T) * normPDF(d1)) / 100;
-  const theta = (-(S * iv * normPDF(d1)) / (2 * Math.sqrt(T)) - (type === 'call' ? 1 : -1) * rf * K * Math.exp(-rf * T) * normCDF(type === 'call' ? d2 : -d2)) / 365;
-  const rho = ((type === 'call' ? 1 : -1) * K * T * Math.exp(-rf * T) * normCDF(type === 'call' ? d2 : -d2)) / 100;
+  document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
+  document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
+  document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
+  document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
+  document.getElementById('resBreak').textContent = (type === 'call' ? K + prem : K - prem).toFixed(2);
 
-  document.getElementById('pop').textContent = pop.toFixed(1) + "%";
-  document.getElementById('resCost').textContent = "$" + (premium * 100 * qty).toLocaleString();
-  document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - premium) * 100 * qty).toLocaleString();
-  document.getElementById('resLoss').textContent = "$" + (premium * 100 * qty).toLocaleString();
-  document.getElementById('resBreak').textContent = (type === 'call' ? K + premium : K - premium).toFixed(2);
-  
-  document.getElementById('d').textContent = delta.toFixed(3);
-  document.getElementById('g').textContent = gamma.toFixed(4);
-  document.getElementById('t').textContent = theta.toFixed(3);
-  document.getElementById('v').textContent = vega.toFixed(3);
-  document.getElementById('r').textContent = rho.toFixed(3);
+  // Greeks
+  document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
+  document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
+  document.getElementById('t').textContent = ((-(S * iv * normPDF(d1)) / (2 * Math.sqrt(T)) / 365)).toFixed(3);
+  document.getElementById('v').textContent = ((S * Math.sqrt(T) * normPDF(d1)) / 100).toFixed(3);
+  document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
+
+  updateScenarios(S, K, T, r, iv, type, prem);
+  drawWaveChart(S, K, type, prem, qty);
   document.getElementById('results').style.display = 'block';
+}
+
+function updateScenarios(S, K, T, r, iv, type, prem) {
+  const body = document.getElementById('scenarioBody'); body.innerHTML = '';
+  [-10, -5, 0, 5, 10].forEach(s => {
+    let ni = Math.max(0.01, iv + (s/100));
+    let np = blackScholes(S, K, T, r, ni, type);
+    body.innerHTML += `<tr><td>${s}%</td><td>${(ni*100).toFixed(1)}%</td><td style="color:${np > prem ? '#28a745':'#ff4d4d'}">$${np.toFixed(2)}</td></tr>`;
+  });
+}
+
+
+
+function drawWaveChart(S, K, type, prem, qty) {
+  const ctx = document.getElementById('payoffChart').getContext('2d');
+  const labels = [], data = [];
+  const start = S * 0.7, end = S * 1.3;
+  for (let p = start; p <= end; p += (end - start)/40) {
+    labels.push(p.toFixed(2));
+    data.push(((type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p)) - prem) * 100 * qty);
+  }
+  if (payoffChart) payoffChart.destroy();
+  payoffChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{ 
+        label: 'Profit/Loss at Expiry ($)', 
+        data: data, 
+        borderColor: '#4db8ff', 
+        backgroundColor: 'rgba(77, 184, 255, 0.15)', 
+        fill: true, 
+        tension: 0.3,
+        pointRadius: 0
+      }]
+    },
+    options: { 
+      responsive: true,
+      plugins: { 
+        legend: { labels: { color: '#fff' } },
+        // Visual Breakeven Line
+        annotation: { annotations: { line1: { type: 'line', yMin: 0, yMax: 0, borderColor: 'white', borderWidth: 2 } } }
+      },
+      scales: { 
+        y: { grid: { color: '#444' }, ticks: { color: '#ccc' }, title: { display: true, text: 'Profit / Loss ($)', color: '#fff' } },
+        x: { grid: { color: '#444' }, ticks: { color: '#ccc' }, title: { display: true, text: 'Stock Price ($)', color: '#fff' } }
+      }
+    }
+  });
 }
 </script>
 </body>
