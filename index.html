@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Options Probability and Profit Calculator| VIX </title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
     :root { 
       --primary: #007bff; --success: #28a745; --accent: #6f42c1; --danger: #ff4d4d;
@@ -283,34 +284,46 @@ function drawWaveChart(S, K, type, prem, qty) {
     let intrinsic = type === 'call' ? (p - K) : (K - p);
     data.push((Math.max(0, intrinsic) - prem) * 100 * qty);
   }
+// Calculate breakeven inside the function
+const breakeven = (type === 'call' ? K + prem : K - prem);
 
-  if (payoffChart) payoffChart.destroy();
-  payoffChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{ label: 'Profit / Loss ($)', data: data, borderColor: '#4db8ff', backgroundColor: 'rgba(77, 184, 255, 0.1)', fill: true, tension: 0.3, pointRadius: 0 }]
-    },
-    plugins: [crosshairPlugin],
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        tooltip: {
-          enabled: true,
-          callbacks: {
-            label: (context) => `P/L: $${context.parsed.y.toLocaleString()}`
+if (payoffChart) payoffChart.destroy();
+payoffChart = new Chart(ctx, {
+  type: 'line',
+  data: { /* ... your labels and data ... */ },
+  plugins: [crosshairPlugin], // Keep your crosshair plugin here
+  options: {
+    plugins: {
+      annotation: {
+        annotations: {
+          line1: {
+            type: 'line',
+            xMin: breakeven.toFixed(2),
+            xMax: breakeven.toFixed(2),
+            borderColor: '#ff4d4d', // Red line for breakeven
+            borderWidth: 2,
+            borderDash: [6, 6],    // Makes it a dashed line
+            label: {
+              display: true,
+              content: 'Breakeven: ' + breakeven.toFixed(2),
+              position: 'start',
+              backgroundColor: 'rgba(255, 77, 77, 0.8)',
+              color: '#fff',
+              font: { size: 10 }
+            }
           }
         }
       },
-      scales: {
-        y: { grid: { color: '#333' }, ticks: { color: '#ccc' }, title: { display: true, text: 'Profit / Loss ($)', color: '#888' } },
-        x: { reverse: (type === 'put'), grid: { color: '#333' }, ticks: { color: '#ccc' }, title: { display: true, text: 'Stock Price ($)', color: '#888' } }
+      tooltip: { /* ... your tooltip config ... */ }
+    },
+    scales: {
+      x: { 
+        reverse: (type === 'put'), // Keeps your inverted Put view
+        // ... rest of your scale config ...
       }
     }
-  });
-}
+  }
+});
 </script>
 </body>
 </html>
