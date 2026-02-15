@@ -45,6 +45,7 @@
     
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    .summary-item label { color: #888; text-transform: uppercase; font-size: 0.65rem; }
     .summary-item span { font-size: 1.2rem; font-weight: bold; display: block; margin-top: 5px; }
 
     .chart-container { background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); }
@@ -52,11 +53,11 @@
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
     .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; cursor: help; border: 1px solid rgba(255,255,255,0.1); }
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
-    
+    .greek-val { font-size: 1rem; font-weight: 700; color: #fff; }
+
     .scenario-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.85rem; }
     .scenario-table th, td { padding: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
 
-    /* FOOTER & PROTECTION SECTION */
     footer { margin-top: 3rem; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; }
     .disclaimer { font-size: 0.75rem; color: #777; line-height: 1.5; max-width: 800px; margin: 0 auto 1rem auto; text-align: justify; }
     .copyright { font-size: 0.85rem; color: #aaa; font-weight: 500; }
@@ -82,10 +83,10 @@
       <label>Option Type</label>
       <select id="type"><option value="call">Call</option><option value="put">Put</option></select>
     </div>
-    <div><label>Expiration Date</label><input type="date" id="expiry" /></div>
-    <div><label>Annual Risk-Free Rate (%) <span id="rfStatus"></span></label><input type="number" id="rf" step="0.01" value="3.42" /></div>
+    <div><label>Expiration Date</label><input type="date" id="expiry" required /></div>
+    <div><label>Annual Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="3.42" /></div>
     <div><label>Market Price (Premium)</label><input type="number" id="premium" step="0.01" /></div>
-    <div><label>Implied Volatility (%)</label><input type="number" id="iv" step="0.01" /></div>
+    <div><label>Implied Volatility (%)</label><input type="number" id="iv" step="0.01" placeholder="Solve first" /></div>
 
     <button type="button" class="btn-solve" onclick="solveForIV()">1. Solve IV</button>
     <button type="button" class="btn-calc" onclick="runAnalysis()">2. Run Analysis</button>
@@ -103,11 +104,11 @@
     <div class="chart-container"><canvas id="payoffChart"></canvas></div>
 
     <div class="greeks-grid">
-      <div class="greek-card" title="DELTA: For every $1 the stock goes up, your profit goes up by this much."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
-      <div class="greek-card" title="GAMMA: The turbocharger. It shows how much faster you win or lose as the stock moves."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
-      <div class="greek-card" title="THETA: The daily rent. This is how much money leaks out of your pocket every single day."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
-      <div class="greek-card" title="VEGA: The fear gauge. If investors get scared and Volatility rises, your option gains value."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
-      <div class="greek-card" title="RHO: The bank rate. How much your price changes if interest rates move."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
+      <div class="greek-card" title="DELTA: Measures how much the option price moves for every 1$ change in the underlying stock. For example,a 0.50 Delta means the option price moves roughly 0.50$ for every 1$ move in the stock. It also acts as a rough probability of the option expiring in-the-money.In other words, you want this to be more than 0.5(50%)."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
+      <div class="greek-card" title="GAMMA: Measures how fast Delta changes when the stock price moves. It tells you how quickly your risk (Delta) is increasing or decreasing.."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
+      <div class="greek-card" title="THETA: Measures time decay, or how much value an option loses each day as it approaches expiration. This is the "cost" of holding an option.."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
+      <div class="greek-card" title="VEGA: Measures sensitivity to implied volatility (how fast the market expects the stock to move). If volatility increases, Vega boosts the option's price.."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
+      <div class="greek-card" title="RHO:  Measures sensitivity to changes in interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
     </div>
 
     <h3 style="font-size: 1rem; margin-top: 2rem; color: #4db8ff;">IV Scenario Table</h3>
@@ -119,37 +120,15 @@
 
   <footer>
     <div class="disclaimer">
-      <strong>Financial Disclaimer:</strong> Trading options involves significant risk and is not suitable for all investors. The calculations, Greeks, and payoff diagrams provided by this tool are based on the Black-Scholes model and are for educational and informational purposes only. Past performance is not indicative of future results. No information provided here constitutes a recommendation to buy or sell any financial instrument. Consult with a licensed financial advisor before making any investment decisions.
+      <strong>Financial Disclaimer:</strong> Trading options involves significant risk. Calculations are based on the Black-Scholes model for educational purposes only.
     </div>
-    <div class="copyright">
-      &copy; 2026 Options Profit Engine. All Rights Reserved.
-    </div>
+    <div class="copyright">&copy; 2026 Options Profit Engine. All Rights Reserved.</div>
   </footer>
 </div>
 
 <script>
 const API_KEY = "d68t7spr01qs7u9judagd68t7spr01qs7u9judb0";
 let payoffChart = null;
-
-// Monthly Refresh Logic
-async function loadAnnualYield() {
-  const lastUpdate = localStorage.getItem('yieldUpdate');
-  const now = new Date().getTime();
-  if (!lastUpdate || (now - lastUpdate > 30 * 24 * 60 * 60 * 1000)) {
-    try {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=^TNX&token=${API_KEY}`);
-      const data = await res.json();
-      if (data.c) {
-        document.getElementById('rf').value = data.c.toFixed(2);
-        localStorage.setItem('yieldUpdate', now);
-        localStorage.setItem('storedYield', data.c.toFixed(2));
-      }
-    } catch(e) { document.getElementById('rf').value = "3.42"; }
-  } else {
-    document.getElementById('rf').value = localStorage.getItem('storedYield') || "3.42";
-  }
-}
-loadAnnualYield();
 
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
@@ -179,7 +158,12 @@ function solveForIV() {
   const prem = parseFloat(document.getElementById('premium').value);
   const r = parseFloat(document.getElementById('rf').value) / 100;
   const type = document.getElementById('type').value;
-  const T = (new Date(document.getElementById('expiry').value) - new Date()) / 31557600000;
+  const expiryVal = document.getElementById('expiry').value;
+  if(!expiryVal) return alert("Please select an Expiration Date first!");
+  
+  const T = (new Date(expiryVal) - new Date()) / 31557600000;
+  if(T <= 0) return alert("Expiration must be in the future!");
+
   let sigma = 0.5;
   for (let i = 0; i < 60; i++) {
     let diff = prem - blackScholes(S, K, T, r, sigma, type);
@@ -194,7 +178,10 @@ function solveForIV() {
 function runAnalysis() {
   const S = parseFloat(document.getElementById('stockPrice').value);
   const K = parseFloat(document.getElementById('strike').value);
-  const iv = parseFloat(document.getElementById('iv').value) / 100;
+  const ivRaw = document.getElementById('iv').value;
+  if(!ivRaw) return alert("Solve for IV first!");
+  
+  const iv = parseFloat(ivRaw) / 100;
   const r = parseFloat(document.getElementById('rf').value) / 100;
   const prem = parseFloat(document.getElementById('premium').value);
   const qty = parseInt(document.getElementById('qty').value);
@@ -230,13 +217,11 @@ function updateScenarios(S, K, T, r, iv, type, prem) {
   });
 }
 
-
-
 function drawWaveChart(S, K, type, prem, qty) {
   const ctx = document.getElementById('payoffChart').getContext('2d');
   const labels = [], data = [];
-  const start = S * 0.7, end = S * 1.3;
-  for (let p = start; p <= end; p += (end - start)/50) {
+  const start = S * 0.5, end = S * 1.5; // wider range for better visual
+  for (let p = start; p <= end; p += (end - start)/60) {
     labels.push(p.toFixed(2));
     let profit = type === 'call' ? (Math.max(0, p - K) - prem) * 100 * qty : (Math.max(0, K - p) - prem) * 100 * qty;
     data.push(profit);
