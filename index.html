@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Probability and Profit Calculator</title>
+  <title>Options Profit Engine | VIX & Delta Neutral</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { 
@@ -24,6 +24,16 @@
       box-shadow: 0 12px 50px rgba(0,0,0,0.8);
     }
 
+    /* VIX BANNER */
+    .vix-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      background: linear-gradient(90deg, rgba(111, 66, 193, 0.2), rgba(0, 123, 255, 0.2));
+      padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .vix-val { font-size: 1.5rem; font-weight: bold; color: #a282e8; }
+    .vix-meta { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
     .ticker-row { display: flex; gap: 0.5rem; align-items: flex-end; grid-column: span 2; }
     .ticker-row div { flex: 1; }
@@ -34,11 +44,11 @@
       width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; 
       background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
     }
+    input[readonly] { background: #e9ecef; cursor: not-allowed; }
 
     button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
     .btn-fetch { background: var(--success); color: white; }
-    .btn-solve { background: var(--accent); color: white; width: 100%; }
-    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1rem; }
+    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
     button:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
     #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
@@ -48,19 +58,24 @@
     .summary-item label { color: #888; text-transform: uppercase; font-size: 0.65rem; }
     .summary-item span { font-size: 1.2rem; font-weight: bold; display: block; margin-top: 5px; }
 
+    .hedge-card { 
+      background: rgba(40, 167, 69, 0.15); border: 1px solid var(--success); 
+      padding: 1.2rem; border-radius: 12px; margin-bottom: 1.5rem; text-align: center;
+    }
+
     .chart-container { background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); }
 
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
-    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; cursor: help; border: 1px solid rgba(255,255,255,0.1); }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.1); cursor: help; }
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
     .greek-val { font-size: 1rem; font-weight: 700; color: #fff; }
 
     .scenario-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.85rem; }
     .scenario-table th, td { padding: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
 
-    footer { margin-top: 3rem; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; }
-    .disclaimer { font-size: 0.75rem; color: #777; line-height: 1.5; max-width: 800px; margin: 0 auto 1rem auto; text-align: justify; }
-    .copyright { font-size: 0.85rem; color: #aaa; font-weight: 500; }
+    footer { margin-top: 3rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; text-align: left; }
+    .license-box { background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 8px; font-size: 0.75rem; color: #999; margin-bottom: 1rem; }
+    .disclaimer { font-size: 0.7rem; color: #666; text-align: justify; margin-bottom: 1rem; }
 
     @media (max-width: 600px) { .grid-form, .greeks-grid { grid-template-columns: 1fr; } .ticker-row { flex-direction: column; } }
   </style>
@@ -68,11 +83,19 @@
 <body>
 
 <div class="container">
-  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Probability and Profit Calculator</h1>
+  <div class="vix-banner">
+    <div>
+      <div class="vix-meta">Market Volatility Index (VIX)</div>
+      <div id="vixTime" style="font-size: 0.65rem; color: #888;">Fetching latest fear gauge...</div>
+    </div>
+    <div class="vix-val" id="vixVal">--.--</div>
+  </div>
+
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Profit Engine</h1>
 
   <form id="optionForm" class="grid-form">
     <div class="ticker-row">
-      <div><label>Ticker Symbol</label><input type="text" id="symbol" placeholder="e.g. AAPL" /></div>
+      <div><label>Ticker Symbol</label><input type="text" id="symbol" placeholder="e.g. ACHR" /></div>
       <button type="button" class="btn-fetch" onclick="fetchTickerData()">Fetch Market Price</button>
     </div>
 
@@ -84,15 +107,16 @@
       <select id="type"><option value="call">Call</option><option value="put">Put</option></select>
     </div>
     <div><label>Expiration Date</label><input type="date" id="expiry" required /></div>
-    <div><label>Annual Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="3.42" /></div>
+    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="3.42" /></div>
     <div><label>Market Price (Premium)</label><input type="number" id="premium" step="0.01" /></div>
-    <div><label>Implied Volatility (%)</label><input type="number" id="iv" step="0.01" placeholder="Solve first" /></div>
+    <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly placeholder="Auto-Solved" /></div>
 
-    <button type="button" class="btn-solve" onclick="solveForIV()">1. Solve IV</button>
-    <button type="button" class="btn-calc" onclick="runAnalysis()">2. Run Analysis</button>
+    <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
   </form>
 
   <div id="results">
+    <div class="hedge-card" id="hedgeMsg"></div>
+
     <div class="summary-grid">
       <div class="summary-item"><label>Prob. of Profit</label><span id="pop">--</span></div>
       <div class="summary-item"><label>Total Cost</label><span id="resCost">--</span></div>
@@ -104,11 +128,11 @@
     <div class="chart-container"><canvas id="payoffChart"></canvas></div>
 
     <div class="greeks-grid">
-      <div class="greek-card" title="DELTA: Measures how much the option price moves for every 1$ change in the underlying stock. For example,a 0.50 Delta means the option price moves roughly 0.50$ for every 1$ move in the stock. It also acts as a rough probability of the option expiring in-the-money.In other words, you want this to be more than 0.5(50%)."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
-      <div class="greek-card" title="GAMMA: Measures how fast Delta changes when the stock price moves. It tells you how quickly your risk (Delta) is increasing or decreasing.."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
-      <div class="greek-card" title="THETA: Measures time decay, or how much value an option loses each day as it approaches expiration. This is the "cost" of holding an option.."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
-      <div class="greek-card" title="VEGA: Measures sensitivity to implied volatility (how fast the market expects the stock to move). If volatility increases, Vega boosts the option's price.."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
-      <div class="greek-card" title="RHO:  Measures sensitivity to changes in interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
+      <div class="greek-card" title="DELTA: Sensitivity to stock price."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
+      <div class="greek-card" title="GAMMA: Rate of change in Delta."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
+      <div class="greek-card" title="THETA: Daily time decay."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
+      <div class="greek-card" title="VEGA: Sensitivity to volatility."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
+      <div class="greek-card" title="RHO: Sensitivity to interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
     </div>
 
     <h3 style="font-size: 1rem; margin-top: 2rem; color: #4db8ff;">IV Scenario Table</h3>
@@ -119,17 +143,33 @@
   </div>
 
   <footer>
-    <div class="disclaimer">
-      <strong>Financial Disclaimer:</strong> Trading options involves significant risk. Calculations are based on the Black-Scholes model for educational purposes only.
-      Software tool was made for educational purposes only. It does not guarantee profit. Use at your own discretion. I am not liable for losses.
+    <div class="license-box">
+      <strong>MIT License</strong><br>
+      Copyright (c) 2026 Options Profit Engine. Permission is hereby granted, free of charge, to any person obtaining a copy of this software... THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
     </div>
-    <div class="copyright">&copy; 2026 Options Probability and Profit Calculator. All Rights Reserved.</div>
+    <div class="disclaimer">
+      Trading options involves significant risk. Calculations are based on the Black-Scholes model for educational purposes only. I am not liable for financial losses.
+    </div>
+    <div class="copyright">&copy; 2026 Options Profit Engine. All Rights Reserved.</div>
   </footer>
 </div>
 
 <script>
 const API_KEY = "d68t7spr01qs7u9judagd68t7spr01qs7u9judb0";
 let payoffChart = null;
+
+// VIX REFRESH LOGIC
+async function refreshVIX() {
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=^VIX&token=${API_KEY}`);
+    const data = await res.json();
+    if (data.c) {
+      document.getElementById('vixVal').textContent = data.c.toFixed(2);
+      document.getElementById('vixTime').textContent = "Daily Refresh: " + new Date().toLocaleDateString();
+    }
+  } catch(e) { console.log("VIX Load Error"); }
+}
+refreshVIX();
 
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
@@ -153,18 +193,21 @@ async function fetchTickerData() {
   if (data.c) document.getElementById('stockPrice').value = data.c;
 }
 
-function solveForIV() {
+function runAnalysis() {
   const S = parseFloat(document.getElementById('stockPrice').value);
   const K = parseFloat(document.getElementById('strike').value);
   const prem = parseFloat(document.getElementById('premium').value);
   const r = parseFloat(document.getElementById('rf').value) / 100;
   const type = document.getElementById('type').value;
+  const qty = parseInt(document.getElementById('qty').value);
   const expiryVal = document.getElementById('expiry').value;
-  if(!expiryVal) return alert("Please select an Expiration Date first!");
+
+  if(!expiryVal || isNaN(S) || isNaN(K) || isNaN(prem)) return alert("Please fill in Stock Price, Strike, Premium, and Expiry.");
   
   const T = (new Date(expiryVal) - new Date()) / 31557600000;
-  if(T <= 0) return alert("Expiration must be in the future!");
+  if(T <= 0) return alert("Expiration must be in the future.");
 
+  // AUTO-IV SOLVER
   let sigma = 0.5;
   for (let i = 0; i < 60; i++) {
     let diff = prem - blackScholes(S, K, T, r, sigma, type);
@@ -172,33 +215,27 @@ function solveForIV() {
     let d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
     sigma += diff / (S * Math.sqrt(T) * normPDF(d1));
   }
-  document.getElementById('iv').value = (Math.abs(sigma) * 100).toFixed(2);
-  runAnalysis();
-}
+  const iv = Math.abs(sigma);
+  document.getElementById('iv').value = (iv * 100).toFixed(2);
 
-function runAnalysis() {
-  const S = parseFloat(document.getElementById('stockPrice').value);
-  const K = parseFloat(document.getElementById('strike').value);
-  const ivRaw = document.getElementById('iv').value;
-  if(!ivRaw) return alert("Solve for IV first!");
-  
-  const iv = parseFloat(ivRaw) / 100;
-  const r = parseFloat(document.getElementById('rf').value) / 100;
-  const prem = parseFloat(document.getElementById('premium').value);
-  const qty = parseInt(document.getElementById('qty').value);
-  const type = document.getElementById('type').value;
-  const T = (new Date(document.getElementById('expiry').value) - new Date()) / 31557600000;
-
+  // GREEKS
   const d1 = (Math.log(S/K) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
   const d2 = d1 - (iv * Math.sqrt(T));
+  const delta = type === 'call' ? normCDF(d1) : normCDF(d1) - 1;
 
+  // DELTA NEUTRAL HEDGE CALC
+  const hedgeQty = Math.round(delta * 100 * qty);
+  const hedgeAction = hedgeQty > 0 ? "SELL" : "BUY";
+  document.getElementById('hedgeMsg').innerHTML = `<strong>Delta Neutral Hedge:</strong> To hedge price risk, ${hedgeAction} <strong>${Math.abs(hedgeQty)}</strong> shares of the underlying stock.`;
+
+  // UI RESULTS
   document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
   document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
   document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
   document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
   document.getElementById('resBreak').textContent = (type === 'call' ? K + prem : K - prem).toFixed(2);
 
-  document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
+  document.getElementById('d').textContent = delta.toFixed(3);
   document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
   document.getElementById('t').textContent = ((-(S * iv * normPDF(d1)) / (2 * Math.sqrt(T)) / 365)).toFixed(3);
   document.getElementById('v').textContent = ((S * Math.sqrt(T) * normPDF(d1)) / 100).toFixed(3);
@@ -221,7 +258,7 @@ function updateScenarios(S, K, T, r, iv, type, prem) {
 function drawWaveChart(S, K, type, prem, qty) {
   const ctx = document.getElementById('payoffChart').getContext('2d');
   const labels = [], data = [];
-  const start = S * 0.5, end = S * 1.5; // wider range for better visual
+  const start = S * 0.5, end = S * 1.5;
   for (let p = start; p <= end; p += (end - start)/60) {
     labels.push(p.toFixed(2));
     let profit = type === 'call' ? (Math.max(0, p - K) - prem) * 100 * qty : (Math.max(0, K - p) - prem) * 100 * qty;
@@ -232,12 +269,12 @@ function drawWaveChart(S, K, type, prem, qty) {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [{ label: 'Net P/L at Expiry ($)', data: data, borderColor: '#4db8ff', backgroundColor: 'rgba(77, 184, 255, 0.15)', fill: true, tension: 0.3, pointRadius: 0 }]
+      datasets: [{ label: 'Profit / Loss ($)', data: data, borderColor: '#4db8ff', backgroundColor: 'rgba(77, 184, 255, 0.1)', fill: true, tension: 0.3, pointRadius: 0 }]
     },
     options: { 
       scales: { 
-        y: { grid: { color: '#444' }, ticks: { color: '#ccc' }, border: { color: '#fff', width: 2 } }, 
-        x: { grid: { color: '#444' }, ticks: { color: '#ccc' } } 
+        y: { grid: { color: '#333' }, ticks: { color: '#ccc' }, border: { color: '#fff', width: 2 } },
+        x: { grid: { color: '#333' }, ticks: { color: '#ccc' } } 
       },
       plugins: { legend: { labels: { color: '#fff' } } }
     }
