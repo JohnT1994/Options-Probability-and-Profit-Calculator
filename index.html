@@ -276,6 +276,12 @@ function updateScenarios(S, K, T, r, iv, type, prem) {
 }
 
 function drawWaveChart(S, K, type, prem, qty) {
+// Calculate if current price is above/below breakeven
+const isCurrentlyProfitable = (type === 'call') ? (S > breakeven) : (S < breakeven);
+
+// Inside the annotation config:
+borderColor: isCurrentlyProfitable ? '#28a745' : '#ff4d4d', 
+// #28a745 is Success Green, #ff4d4d is Danger Red
   const ctx = document.getElementById('payoffChart').getContext('2d');
   const labels = [], data = [];
   const start = S * 0.5, end = S * 1.5;
@@ -284,13 +290,21 @@ function drawWaveChart(S, K, type, prem, qty) {
     let intrinsic = type === 'call' ? (p - K) : (K - p);
     data.push((Math.max(0, intrinsic) - prem) * 100 * qty);
   }
+  
 // Calculate breakeven inside the function
 const breakeven = (type === 'call' ? K + prem : K - prem);
 
 if (payoffChart) payoffChart.destroy();
 payoffChart = new Chart(ctx, {
   type: 'line',
-  data: { /* ... your labels and data ... */ },
+  data: {
+  labels: labels, // Connects the array of prices
+  datasets: [{
+    label: 'Profit / Loss ($)',
+    data: data,   // Connects the array of P/L values
+    // ... rest of styling
+  }]
+}
   plugins: [crosshairPlugin], // Keep your crosshair plugin here
   options: {
     plugins: {
@@ -298,8 +312,8 @@ payoffChart = new Chart(ctx, {
         annotations: {
           line1: {
             type: 'line',
-            xMin: breakeven.toFixed(2),
-            xMax: breakeven.toFixed(2),
+xMin: labels.findIndex(val => parseFloat(val) >= breakeven),
+xMax: labels.findIndex(val => parseFloat(val) >= breakeven),
             borderColor: '#ff4d4d', // Red line for breakeven
             borderWidth: 2,
             borderDash: [6, 6],    // Makes it a dashed line
