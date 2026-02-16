@@ -232,6 +232,11 @@ function blackScholes(S, K, T, r, sigma, type) {
   return type === 'call' ? (S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2)) : (K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1));
 }
 
+  function clearProfileDisplay() {
+  document.getElementById('companyName').textContent = '';
+  document.getElementById('stockLogo').style.display = 'none';
+}
+  
 async function fetchTicketData() {
   const symInput = document.getElementById('symbol');
   const sym = symInput.value.trim().toUpperCase();
@@ -281,10 +286,6 @@ async function fetchTicketData() {
     // Optional user feedback:
     // alert("Error fetching data. Check symbol and try again.");
   }
-  function clearProfileDisplay() {
-  document.getElementById('companyName').textContent = '';
-  document.getElementById('stockLogo').style.display = 'none';
-}
 }
 
 function runAnalysis() {
