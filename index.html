@@ -282,7 +282,11 @@ function drawWaveChart(S, K, type, prem, qty) {
     const isCurrentlyProfitable = (type === 'call') ? (S > breakeven) : (S < breakeven);
     
     const labels = [], data = [];
-    const start = S * 0.5, end = S * 1.5;
+    
+    // Logic Fix: Center the chart on the Strike (K) so the "bend" is always visible
+    const start = Math.min(S, K) * 0.7; 
+    const end = Math.max(S, K) * 1.3; 
+    
     for (let p = start; p <= end; p += (end - start)/60) {
         labels.push(p.toFixed(2));
         let intrinsic = type === 'call' ? (p - K) : (K - p);
@@ -305,19 +309,16 @@ function drawWaveChart(S, K, type, prem, qty) {
                 pointRadius: 0
             }]
         },
-        plugins: [crosshairPlugin], // <--- This enables your custom vertical/horizontal lines
+        plugins: [crosshairPlugin], 
         options: {
-  responsive: true,
-  maintainAspectRatio: false, // This is the most important line for size
-  // ... rest of your options
-        }
-          // 2. This part enables the "Hover" interaction
+            responsive: true,
+            maintainAspectRatio: false, // Allows it to fill the CSS height
             interaction: {
                 mode: 'index',
                 intersect: false,
             },
             plugins: {
-                legend: { display: false }, // Hides the "Profit/Loss" box at the top
+                legend: { display: false },
                 tooltip: {
                     enabled: true,
                     callbacks: {
