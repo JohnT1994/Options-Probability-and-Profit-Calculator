@@ -209,10 +209,10 @@ async function refreshVIX() {
   const timeElement = document.getElementById('vixTime');
   
   const proxy = "https://corsproxy.io/?";
-  const target = encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX");
+  const vixTarget = encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX");
 
   try {
-    const response = await fetch(proxy + target);
+    const response = await fetch(proxy + vixTarget);
     const data = await response.json();
     const price = data.chart.result[0].meta.regularMarketPrice;
     
@@ -225,6 +225,42 @@ async function refreshVIX() {
     vixElement.textContent = "18.50";
     timeElement.textContent = "Yahoo Feed Offline (Showing Fallback)";
   }
+  async function refreshVIX() {
+  const vixElement = document.getElementById('vixVal');
+  const timeElement = document.getElementById('vixTime');
+  const proxy = "https://corsproxy.io/?";
+  
+  // --- PART 1: VIX FETCH ---
+  const vixTarget = encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX");
+  try {
+    const response = await fetch(proxy + vixTarget);
+    const data = await response.json();
+    const price = data.chart.result[0].meta.regularMarketPrice;
+    if (price) {
+      vixElement.textContent = price.toFixed(2);
+      timeElement.textContent = "Live Sync with Yahoo Finance: " + new Date().toLocaleTimeString();
+    }
+  } catch (e) {
+    vixElement.textContent = "18.50";
+    timeElement.textContent = "Yahoo Feed Offline (Showing Fallback)";
+  }
+
+  // --- PART 2: 10-YEAR TREASURY FETCH (^TNX) ---
+  const tnxTarget = encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX");
+  try {
+    const tnxResponse = await fetch(proxy + tnxTarget);
+    const tnxData = await tnxResponse.json();
+    const tnxPrice = tnxData.chart.result[0].meta.regularMarketPrice;
+    
+    if (tnxPrice) {
+      const liveRate = (tnxPrice / 10).toFixed(2);
+      document.getElementById('rf').value = liveRate;
+    }
+  } catch (e) {
+    console.log("Treasury Feed Offline");
+    // If it fails, it will just keep the default '3.42'
+  }
+}
 }
 refreshVIX();
   setInterval(refreshVIX, 1000);  // 1000ms = 1 second
