@@ -36,7 +36,7 @@
     .vix-meta { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
 
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
-    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end; grid-column: span 2; }
+    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end !important; grid-column: span 2; }
     .ticket-row div { flex: 1; }
 
     label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
@@ -92,7 +92,7 @@
   <form id="optionForm" class="grid-form">
     
     <div class="ticket-row">
-  <div style="flex: 300px; position: relative;">
+  <div style="flex: max-width 150px; position: relative;">
     <label>Ticket Symbol</label>
     <input type="text" id="symbol" placeholder="e.g. TSLA" />
     <span id="companyName" style="display: block; margin-top: 6px; font-size: 0.95rem; color: #ddd; font-weight: 500;"></span>
