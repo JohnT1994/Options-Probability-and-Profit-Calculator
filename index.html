@@ -288,15 +288,17 @@ function runAnalysis() {
   document.getElementById('v').textContent = (S * Math.exp(-q * T) * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
   document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
 
-updateScenarios(S, K, T, r, iv, type, prem, q);
+  updateScenarios(S, K, T, r, iv, type, prem, q);
+  
   document.getElementById('results').style.display = 'block';
+
   const be = (type === 'call' ? K + prem : K - prem);
   drawWaveChart(S, K, type, prem, qty, be);
 }
-}
 
 function updateScenarios(S, K, T, r, iv, type, prem, q) {
-  const body = document.getElementById('scenarioBody'); body.innerHTML = '';
+  const body = document.getElementById('scenarioBody'); 
+  body.innerHTML = '';
   [-10, -5, 0, 5, 10].forEach(s => {
     let ni = Math.max(0.01, iv + (s/100));
     let np = blackScholes(S, K, T, r, ni, type, q);
@@ -345,9 +347,9 @@ function drawWaveChart(S, K, type, prem, qty, breakeven) {
                 tooltip: { enabled: true },
                 annotation: {
                     annotations: {
-                        // 1. DASHED BREAKEVEN LINE + BOX
+                       
                         line1: {
-                            type: 'line',
+                           type: 'line',
                            xMin: Math.max(0, labels.findIndex(v => parseFloat(v) >= breakeven)),
                            xMax: Math.max(0, labels.findIndex(v => parseFloat(v) >= breakeven)),
                             borderColor: (type === 'call' ? S > breakeven : S < breakeven) ? '#28a745' : '#ff4d4d',
@@ -363,8 +365,7 @@ function drawWaveChart(S, K, type, prem, qty, breakeven) {
                                 borderRadius: 4,
                                 position: 'start'
                             }
-                        },
-                        // 2. SOLID CURRENT PRICE LINE
+                        }
                         line2: {
                             type: 'line',
                             xMin: Math.max(0, labels.findIndex(v => parseFloat(v) >= S)),
