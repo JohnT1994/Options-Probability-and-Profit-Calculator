@@ -122,6 +122,7 @@
     </div>
     <div><label>Expiration Date</label><input type="date" id="expiry" required /></div>
     <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="3.42" /></div>
+    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" readonly placeholder="Fetching..." /></div>
     <div><label>Market Price (Premium)</label><input type="number" id="premium" step="0.01" /></div>
     <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly placeholder="Auto-Solved" /></div>
 
@@ -252,6 +253,16 @@ const normCDF = (x) => {
 
 function blackScholes(S, K, T, r, sigma, type) {
   if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
+  // Adjusted for Dividends (The Merton Extension)
+  {const Seqt = S * Math.exp(-q * T); 
+  
+  const d1 = (Math.log(S / K) + (r - q + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+  const d2 = d1 - sigma * Math.sqrt(T);
+  
+  return type === 'call' 
+    ? (Seqt * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2)) 
+    : (K * Math.exp(-r * T) * normCDF(-d2) - Seqt * normCDF(-d1));
+}
   const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
   const d2 = d1 - sigma * Math.sqrt(T);
   return type === 'call' ? (S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2)) : (K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1));
@@ -291,6 +302,14 @@ async function fetchTicketData() {
       const logoImg = document.getElementById('stockLogo');
       logoImg.src = profile.logo;
       logoImg.style.display = 'block';
+    const financialsRes = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${API_KEY}`);
+    const financials = await financialsRes.json();
+    if (financials.metric && financials.metric.dividendYieldIndicatedAnnual) {
+    document.getElementById('dividend').value = financials.metric.dividendYieldIndicatedAnnual.toFixed(2);
+} else {
+    // If the stock pays no dividend (like TSLA), set it to 0
+    document.getElementById('dividend').value = "0.00";
+}
     }
 
     // 2. NEW FIX: Fetch Initial Price immediately (REST API)
@@ -337,6 +356,11 @@ function runAnalysis() {
   const K = parseFloat(document.getElementById('strike').value);
   const prem = parseFloat(document.getElementById('premium').value);
   const r = parseFloat(document.getElementById('rf').value) / 100;
+  const type = document.getElementById('type').value;
+  const qty = parseInt(document.getElementById('qty').value);
+  const expiryVal = document.getElementById('expiry').value;
+  const q = parseFloat(document.getElementById('dividend').value) / 100 || 0; 
+  
   const type = document.getElementById('type').value;
   const qty = parseInt(document.getElementById('qty').value);
   const expiryVal = document.getElementById('expiry').value;
