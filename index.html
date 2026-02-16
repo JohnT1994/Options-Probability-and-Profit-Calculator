@@ -90,11 +90,18 @@
   <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Probability and Profit Calculator</h1>
 
   <form id="optionForm" class="grid-form">
+    
     <div class="ticket-row">
-      <button type="button" class="btn-fetch" onclick="fetchTicketData()">"Load Stock Name & Icon</button>
-      <div><label>Ticket Symbol</label><input type="text" id="symbol" placeholder="e.g. TSLA" /></div>
-      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Market Price</button>
-    </div>
+  <div style="flex: 1; position: relative;">
+    <label>Ticket Symbol</label>
+    <input type="text" id="symbol" placeholder="e.g. TSLA" />
+    <span id="companyName" style="display: block; margin-top: 6px; font-size: 0.95rem; color: #ddd; font-weight: 500;"></span>
+  </div>
+  <img id="stockLogo" 
+       style="width: 48px; height: 48px; object-fit: contain; display: none; margin-left: 12px; border-radius: 8px; background: rgba(255,255,255,0.1);" 
+       alt="Company Logo">
+  <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Market Price & Profile</button>
+</div>
 
     <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
     <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" min="1" /></div>
@@ -226,11 +233,54 @@ function blackScholes(S, K, T, r, sigma, type) {
 }
 
 async function fetchTicketData() {
-  const sym = document.getElementById('symbol').value.toUpperCase();
-  if(!sym) return;
-  const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${API_KEY}`);
-  const data = await res.json();
-  if (data.c) document.getElementById('stockPrice').value = data.c;
+  const symInput = document.getElementById('symbol');
+  const sym = symInput.value.trim().toUpperCase();
+  if (!sym) {
+    alert("Please enter a ticker symbol first.");
+    return;
+  }
+
+  // Reset previous results
+  document.getElementById('companyName').textContent = '';
+  document.getElementById('stockLogo').style.display = 'none';
+
+  try {
+    // 1. Fetch current quote (price)
+    const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`;
+    const quoteRes = await fetch(quoteUrl);
+    if (!quoteRes.ok) throw new Error(`Quote fetch failed: ${quoteRes.status}`);
+    const quote = await quoteRes.json();
+
+    if (quote.c && quote.c > 0) {
+      document.getElementById('stockPrice').value = quote.c.toFixed(2);
+    } else {
+      console.warn("No current price available", quote);
+      // Optional: alert("Could not fetch current price.");
+    }
+
+    // 2. Fetch company profile (name + logo)
+    const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${API_KEY}`;
+    const profileRes = await fetch(profileUrl);
+    if (!profileRes.ok) throw new Error(`Profile fetch failed: ${profileRes.status}`);
+    const profile = await profileRes.json();
+
+    // Handle profile data
+    if (profile.name) {
+      document.getElementById('companyName').textContent = profile.name;
+    }
+
+    if (profile.logo) {
+      const logoImg = document.getElementById('stockLogo');
+      logoImg.src = profile.logo;
+      logoImg.onload = () => { logoImg.style.display = 'block'; };
+      logoImg.onerror = () => { logoImg.style.display = 'none'; };
+    }
+
+  } catch (err) {
+    console.error("Fetch error:", err);
+    // Optional user feedback:
+    // alert("Error fetching data. Check symbol and try again.");
+  }
 }
 
 function runAnalysis() {
