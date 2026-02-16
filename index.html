@@ -232,8 +232,7 @@ const crosshairPlugin = {
     const tnxPrice = tnxData.chart.result[0].meta.regularMarketPrice;
     
     if (tnxPrice) {
-      // Divide by 10 (Yahoo format) to get the % for your BS model
-      const liveRate = (tnxPrice / 10).toFixed(2);
+      const liveRate = (tnxPrice).toFixed(2);
       document.getElementById('rf').value = liveRate;
     }
   } catch (e) {
