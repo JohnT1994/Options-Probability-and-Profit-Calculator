@@ -121,11 +121,20 @@
     <div class="chart-container"><canvas id="payoffChart"></canvas></div>
 
     <div class="greeks-grid">
-      <div class="greek-card" title="DELTA: Sensitivity to stock price."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
-      <div class="greek-card" title="GAMMA: Rate of change in Delta."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
-      <div class="greek-card" title="THETA: Daily time decay."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
-      <div class="greek-card" title="VEGA: Sensitivity to volatility."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
-      <div class="greek-card" title="RHO: Sensitivity to interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
+      <div class="greek-card" title="DELTA: Sensitivity to stock price. Measures how much an option's price will change for every $1 move in the underlying stock. 
+        Calls have positive delta (0 to +1 ), puts have negative delta (0 to -1 )."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
+
+      <div class="greek-card" title="GAMMA: Rate of change in Delta. Measures the rate of change in Delta for a $1 move in the stock. 
+        Think of Delta as speed and Gamma as acceleration."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
+      
+      <div class="greek-card" title="THETA: Daily time decay. Measures how much value an option loses daily as it approaches expiration. 
+        This is generally negative for buyers."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
+      
+      <div class="greek-card" title="VEGA: Measures sensitivity to implied volatility (IV). High Vega means the option price rises when volatility increases,
+        which is good for buyers."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
+      
+      <div class="greek-card" title="RHO: Measures sensitivity to interest rate changes.
+        It is generally the least important factor for short-term traders."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
     </div>
 
     <h3 style="font-size: 1rem; margin-top: 2rem; color: #4db8ff;">IV Scenario Table</h3>
