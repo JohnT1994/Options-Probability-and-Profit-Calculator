@@ -253,14 +253,13 @@ async function refreshVIX() {
     const tnxPrice = tnxData.chart.result[0].meta.regularMarketPrice;
     
     if (tnxPrice) {
+      // Divide by 10 (Yahoo format) to get the % for your BS model
       const liveRate = (tnxPrice / 10).toFixed(2);
       document.getElementById('rf').value = liveRate;
     }
   } catch (e) {
     console.log("Treasury Feed Offline");
-    // If it fails, it will just keep the default '3.42'
   }
-}
 }
 refreshVIX();
   setInterval(refreshVIX, 1000);  // 1000ms = 1 second
