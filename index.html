@@ -258,41 +258,45 @@ async function fetchTicketData() {
     return;
   }
 
-  document.getElementById('companyName').textContent = '';
+  // Reset UI
+  document.getElementById('companyName').textContent = 'Loading...';
   document.getElementById('stockLogo').style.display = 'none';
-  document.getElementById('stockPrice').value = '';  // Clear old price too
+  document.getElementById('stockPrice').value = ''; 
 
+  // Kill old connection
   if (currentWs) {
     currentWs.close();
     currentWs = null;
   }
 
   try {
-    
-    const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${API_KEY}`;
-    const profileRes = await fetch(profileUrl);
-    if (!profileRes.ok) throw new Error(`Profile fetch failed: ${profileRes.status}`);
+    // 1. Fetch Profile (Logo/Name)
+    const profileRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${API_KEY}`);
     const profile = await profileRes.json();
-
-    if (profile.name) {
-      document.getElementById('companyName').textContent = profile.name;
-    }
-
+    if (profile.name) document.getElementById('companyName').textContent = profile.name;
     if (profile.logo) {
       const logoImg = document.getElementById('stockLogo');
       logoImg.src = profile.logo;
-      logoImg.onload = () => { logoImg.style.display = 'block'; };
-      logoImg.onerror = () => { logoImg.style.display = 'none'; };
+      logoImg.style.display = 'block';
+    }
+
+    // 2. NEW FIX: Fetch Initial Price immediately (REST API)
+    // This solves the "price not showing" bug when the market is slow or closed.
+    const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`);
+    const quote = await quoteRes.json();
+    if (quote.c) {
+      // 'c' is the official current market price
+      document.getElementById('stockPrice').value = quote.c.toFixed(2);
     }
 
   } catch (err) {
     console.error("Fetch error:", err);
   }
 
+  // 3. Start WebSocket for Live Updates
   currentWs = new WebSocket(`wss://ws.finnhub.io?token=${API_KEY}`);
 
   currentWs.onopen = function () {
-    console.log(`WebSocket opened – subscribing to ${sym}`);
     currentWs.send(JSON.stringify({ type: 'subscribe', symbol: sym }));
   };
 
@@ -300,11 +304,11 @@ async function fetchTicketData() {
     try {
       const msg = JSON.parse(event.data);
       if (msg.type === 'trade' && msg.data && msg.data.length > 0) {
-        const trade = msg.data[0];
-        const price = trade.p;
+        // BUG FIX: Use the LAST trade in the array (the most recent one)
+        const lastTrade = msg.data[msg.data.length - 1];
+        const price = lastTrade.p;
         if (price && price > 0) {
           document.getElementById('stockPrice').value = price.toFixed(2);
-          console.log(`Live price update for ${sym}: $${price.toFixed(2)}`);
         }
       }
     } catch (e) {
@@ -312,15 +316,9 @@ async function fetchTicketData() {
     }
   };
 
-  currentWs.onerror = function (err) {
-    console.error("WebSocket error:", err);
-  };
-
-  currentWs.onclose = function () {
-    console.log("WebSocket closed");
-  };
+  currentWs.onerror = (err) => console.error("WebSocket error:", err);
+  currentWs.onclose = () => console.log("WebSocket closed");
 }
-
 function runAnalysis() {
   const S = parseFloat(document.getElementById('stockPrice').value);
   const K = parseFloat(document.getElementById('strike').value);
