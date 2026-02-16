@@ -276,13 +276,12 @@ function updateScenarios(S, K, T, r, iv, type, prem) {
 }
 
 function drawWaveChart(S, K, type, prem, qty) {
-// Calculate if current price is above/below breakeven
-const isCurrentlyProfitable = (type === 'call') ? (S > breakeven) : (S < breakeven);
-
-// Inside the annotation config:
-borderColor: isCurrentlyProfitable ? '#28a745' : '#ff4d4d', 
-// #28a745 is Success Green, #ff4d4d is Danger Red
   const ctx = document.getElementById('payoffChart').getContext('2d');
+  
+  // 1. Calculate the math FIRST
+  const breakeven = (type === 'call' ? K + prem : K - prem);
+  const isCurrentlyProfitable = (type === 'call') ? (S > breakeven) : (S < breakeven);
+  
   const labels = [], data = [];
   const start = S * 0.5, end = S * 1.5;
   for (let p = start; p <= end; p += (end - start)/60) {
@@ -290,54 +289,55 @@ borderColor: isCurrentlyProfitable ? '#28a745' : '#ff4d4d',
     let intrinsic = type === 'call' ? (p - K) : (K - p);
     data.push((Math.max(0, intrinsic) - prem) * 100 * qty);
   }
-  
-// Calculate breakeven inside the function
-const breakeven = (type === 'call' ? K + prem : K - prem);
 
-if (payoffChart) payoffChart.destroy();
-payoffChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-  labels: labels, // Connects the array of prices
-  datasets: [{
-    label: 'Profit / Loss ($)',
-    data: data,   // Connects the array of P/L values
-    // ... rest of styling
-  }]
-}
-  plugins: [crosshairPlugin], // Keep your crosshair plugin here
-  options: {
-    plugins: {
-      annotation: {
-        annotations: {
-          line1: {
-            type: 'line',
-xMin: labels.findIndex(val => parseFloat(val) >= breakeven),
-xMax: labels.findIndex(val => parseFloat(val) >= breakeven),
-            borderColor: '#ff4d4d', // Red line for breakeven
-            borderWidth: 2,
-            borderDash: [6, 6],    // Makes it a dashed line
-            label: {
-              display: true,
-              content: 'Breakeven: ' + breakeven.toFixed(2),
-              position: 'start',
-              backgroundColor: 'rgba(255, 77, 77, 0.8)',
-              color: '#fff',
-              font: { size: 10 }
+  if (payoffChart) payoffChart.destroy();
+  
+  payoffChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Profit / Loss ($)',
+        data: data,
+        borderColor: '#4db8ff',
+        backgroundColor: 'rgba(77, 184, 255, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0
+      }]
+    }, // <--- THIS COMMA IS CRITICAL
+    plugins: [crosshairPlugin], 
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        annotation: {
+          annotations: {
+            line1: {
+              type: 'line',
+              xMin: labels.findIndex(val => parseFloat(val) >= breakeven),
+              xMax: labels.findIndex(val => parseFloat(val) >= breakeven),
+              // 2. APPLY THE DYNAMIC COLOR HERE
+              borderColor: isCurrentlyProfitable ? '#28a745' : '#ff4d4d', 
+              borderWidth: 3,
+              borderDash: [6, 6],
+              label: {
+                display: true,
+                content: 'Breakeven: ' + breakeven.toFixed(2),
+                backgroundColor: isCurrentlyProfitable ? 'rgba(40, 167, 69, 0.8)' : 'rgba(255, 77, 77, 0.8)',
+                color: '#fff'
+              }
             }
           }
         }
       },
-      tooltip: { /* ... your tooltip config ... */ }
-    },
-    scales: {
-      x: { 
-        reverse: (type === 'put'), // Keeps your inverted Put view
-        // ... rest of your scale config ...
+      scales: {
+        x: { reverse: (type === 'put') },
+        y: { grid: { color: '#333' } }
       }
     }
-  }
-});
+  });
+}
 </script>
 </body>
 </html>
