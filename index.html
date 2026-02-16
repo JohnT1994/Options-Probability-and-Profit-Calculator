@@ -91,9 +91,9 @@
 
   <form id="optionForm" class="grid-form">
     <div class="ticket-row">
+      <button type="button" class="btn-fetch" onclick="fetchTicketData()">"Load Stock Name & Icon</button>
       <div><label>Ticket Symbol</label><input type="text" id="symbol" placeholder="e.g. TSLA" /></div>
       <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Market Price</button>
-      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Stock Icon And Full Name</button>
     </div>
 
     <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
@@ -228,7 +228,7 @@ function blackScholes(S, K, T, r, sigma, type) {
 async function fetchTicketData() {
   const sym = document.getElementById('symbol').value.toUpperCase();
   if(!sym) return;
-  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`);
+  const res = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${API_KEY}`);
   const data = await res.json();
   if (data.c) document.getElementById('stockPrice').value = data.c;
 }
