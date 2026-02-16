@@ -92,7 +92,7 @@
   <form id="optionForm" class="grid-form">
     
     <div class="ticket-row">
-  <div style="width: 400px; flex: 0 0 auto;">
+  <div style="width: 600px; flex: 0 0 auto;">
     <label>Ticket Symbol</label>
     
     <!-- Logo + name appear here – right above the input -->
@@ -226,6 +226,7 @@ async function refreshVIX() {
   }
 }
 refreshVIX();
+  setInterval(refreshVIX, 1000);  // 1000ms = 1 second
   
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
@@ -256,31 +257,22 @@ async function fetchTicketData() {
     return;
   }
 
-  // Reset previous results
   document.getElementById('companyName').textContent = '';
   document.getElementById('stockLogo').style.display = 'none';
+  document.getElementById('stockPrice').value = '';  // Clear old price too
+
+  if (currentWs) {
+    currentWs.close();
+    currentWs = null;
+  }
 
   try {
-    // 1. Fetch current quote (price)
-    const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`;
-    const quoteRes = await fetch(quoteUrl);
-    if (!quoteRes.ok) throw new Error(`Quote fetch failed: ${quoteRes.status}`);
-    const quote = await quoteRes.json();
-
-    if (quote.c && quote.c > 0) {
-      document.getElementById('stockPrice').value = quote.c.toFixed(2);
-    } else {
-      console.warn("No current price available", quote);
-      // Optional: alert("Could not fetch current price.");
-    }
-
-    // 2. Fetch company profile (name + logo)
+    
     const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${API_KEY}`;
     const profileRes = await fetch(profileUrl);
     if (!profileRes.ok) throw new Error(`Profile fetch failed: ${profileRes.status}`);
     const profile = await profileRes.json();
 
-    // Handle profile data
     if (profile.name) {
       document.getElementById('companyName').textContent = profile.name;
     }
@@ -294,9 +286,38 @@ async function fetchTicketData() {
 
   } catch (err) {
     console.error("Fetch error:", err);
-    // Optional user feedback:
-    // alert("Error fetching data. Check symbol and try again.");
   }
+
+  currentWs = new WebSocket(`wss://ws.finnhub.io?token=${API_KEY}`);
+
+  currentWs.onopen = function () {
+    console.log(`WebSocket opened – subscribing to ${sym}`);
+    currentWs.send(JSON.stringify({ type: 'subscribe', symbol: sym }));
+  };
+
+  currentWs.onmessage = function (event) {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'trade' && msg.data && msg.data.length > 0) {
+        const trade = msg.data[0];
+        const price = trade.p;
+        if (price && price > 0) {
+          document.getElementById('stockPrice').value = price.toFixed(2);
+          console.log(`Live price update for ${sym}: $${price.toFixed(2)}`);
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing WS message:", e);
+    }
+  };
+
+  currentWs.onerror = function (err) {
+    console.error("WebSocket error:", err);
+  };
+
+  currentWs.onclose = function () {
+    console.log("WebSocket closed");
+  };
 }
 
 function runAnalysis() {
