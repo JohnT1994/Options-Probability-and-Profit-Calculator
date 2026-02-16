@@ -263,7 +263,6 @@ function runAnalysis() {
   if(!expiryVal || isNaN(S) || isNaN(K) || isNaN(prem)) return alert("Fill all fields.");
   const T = Math.max(0.0001, (new Date(expiryVal) - new Date()) / 31557600000);
 
-  // FIXED: BSM IV Solver
   let sigma = 0.5;
   for (let i = 0; i < 60; i++) {
     let diff = prem - blackScholes(S, K, T, r, sigma, type, q);
@@ -274,7 +273,6 @@ function runAnalysis() {
   const iv = Math.abs(sigma);
   document.getElementById('iv').value = (iv * 100).toFixed(2);
 
-  // FIXED: Greeks with Merton Adjustment
   const d1 = (Math.log(S/K) + (r - q + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
   const d2 = d1 - (iv * Math.sqrt(T));
 
@@ -290,9 +288,11 @@ function runAnalysis() {
   document.getElementById('v').textContent = (S * Math.exp(-q * T) * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
   document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
 
-  updateScenarios(S, K, T, r, iv, type, prem, q);
-  drawWaveChart(S, K, type, prem, qty);
+updateScenarios(S, K, T, r, iv, type, prem, q);
   document.getElementById('results').style.display = 'block';
+  const be = (type === 'call' ? K + prem : K - prem);
+  drawWaveChart(S, K, type, prem, qty, be);
+}
 }
 
 function updateScenarios(S, K, T, r, iv, type, prem, q) {
@@ -348,8 +348,8 @@ function drawWaveChart(S, K, type, prem, qty, breakeven) {
                         // 1. DASHED BREAKEVEN LINE + BOX
                         line1: {
                             type: 'line',
-                            xMin: labels.findIndex(v => parseFloat(v) >= breakeven),
-                            xMax: labels.findIndex(v => parseFloat(v) >= breakeven),
+                           xMin: Math.max(0, labels.findIndex(v => parseFloat(v) >= breakeven)),
+                           xMax: Math.max(0, labels.findIndex(v => parseFloat(v) >= breakeven)),
                             borderColor: (type === 'call' ? S > breakeven : S < breakeven) ? '#28a745' : '#ff4d4d',
                             borderWidth: 3,
                             borderDash: [6, 6],
@@ -367,8 +367,8 @@ function drawWaveChart(S, K, type, prem, qty, breakeven) {
                         // 2. SOLID CURRENT PRICE LINE
                         line2: {
                             type: 'line',
-                            xMin: labels.findIndex(v => parseFloat(v) >= S),
-                            xMax: labels.findIndex(v => parseFloat(v) >= S),
+                            xMin: Math.max(0, labels.findIndex(v => parseFloat(v) >= S)),
+                            xMax: Math.max(0, labels.findIndex(v => parseFloat(v) >= S)),
                             borderColor: 'rgba(255, 255, 255, 0.5)',
                             borderWidth: 2,
                             label: {
