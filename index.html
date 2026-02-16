@@ -92,15 +92,25 @@
   <form id="optionForm" class="grid-form">
     
     <div class="ticket-row">
-  <div style="width: 220px; flex: 0 0 auto;">
+  <div style="width: 240px; flex: 0 0 auto;">
     <label>Ticket Symbol</label>
-    <input type="text" id="symbol" placeholder="e.g. TSLA" />
-    <span id="companyName" style="display: block; margin-top: 6px; font-size: 0.95rem; color: #ddd; font-weight: 500;"></span>
+    
+    <!-- Logo + name appear here – right above the input -->
+    <div style="display: flex; align-items: center; gap: 10px; min-height: 36px; margin-bottom: 6px;">
+      <img id="stockLogo"
+           style="width: 32px; height: 32px; object-fit: contain; display: none; border-radius: 6px; background: rgba(255,255,255,0.1);"
+           alt="Company Logo">
+      <span id="companyName"
+            style="font-size: 0.95rem; color: #ddd; font-weight: 500; line-height: 1.3; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+      </span>
+    </div>
+    
+    <input type="text" id="symbol" placeholder="e.g. TSLA" oninput="clearProfileDisplay()" />
   </div>
-  <img id="stockLogo" 
-       style="width: 48px; height: 48px; object-fit: contain; display: none; margin-left: 12px; border-radius: 8px; background: rgba(255,255,255,0.1);" 
-       alt="Company Logo">
-  <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Market Price </button>
+
+  <button type="button" class="btn-fetch" onclick="fetchTicketData()">
+    Fetch Market Price
+  </button>
 </div>
 
     <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
@@ -235,6 +245,7 @@ function blackScholes(S, K, T, r, sigma, type) {
   function clearProfileDisplay() {
   document.getElementById('companyName').textContent = '';
   document.getElementById('stockLogo').style.display = 'none';
+  document.getElementById('stockPrice').value = ''; 
 }
   
 async function fetchTicketData() {
