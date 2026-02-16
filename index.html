@@ -307,9 +307,11 @@ function drawWaveChart(S, K, type, prem, qty) {
         },
         plugins: [crosshairPlugin], // <--- This enables your custom vertical/horizontal lines
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            // 2. This part enables the "Hover" interaction
+  responsive: true,
+  maintainAspectRatio: false, // This is the most important line for size
+  // ... rest of your options
+        }
+          // 2. This part enables the "Hover" interaction
             interaction: {
                 mode: 'index',
                 intersect: false,
