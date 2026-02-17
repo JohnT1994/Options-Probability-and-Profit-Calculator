@@ -7,321 +7,314 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
-    :root {
-      --primary-blue: #007bff;
-      --bg-dark: #000000;
-      --card-bg: #111111;
-      --input-bg: #ffffff;
-      --text-color: #ffffff;
+    :root { 
+      --primary: #007bff; --success: #28a745; --accent: #6f42c1; --danger: #ff4d4d;
+      --glass: rgba(0, 0, 0, 0.9); 
     }
-    body {
-      font-family: 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--bg-dark);
-      background-image: radial-gradient(circle at 10% 20%, rgba(0, 123, 255, 0.1) 0%, transparent 20%);
-      color: var(--text-color);
-      margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #050505;
+      background-image: radial-gradient(circle at 10% 20%, rgba(0, 123, 255, 0.15) 0%, transparent 25%);
+      color: #ffffff; max-width: 950px; margin: 0 auto; padding: 0; 
     }
-
-    /* Live Ticker Bar */
-    .live-bar {
-      width: 100%;
-      background: rgba(20, 20, 20, 0.9);
-      border-bottom: 1px solid #333;
-      padding: 10px 0;
-      display: flex;
-      justify-content: center;
-      gap: 40px;
-      font-size: 0.9rem;
-      font-weight: bold;
-      position: sticky; top: 0; z-index: 100;
+    .vix-banner {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      background: rgba(15, 15, 15, 0.95); padding: 0.8rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1); position: sticky; top: 0; z-index: 1000;
+      box-sizing: border-box;
     }
-    .ticker-item span { color: #888; margin-right: 5px; }
-    .val-neutral { color: #ffc107; }
-
-    .container {
-      background-color: var(--bg-dark);
-      border: 1px solid #222;
-      border-radius: 15px;
-      padding: 30px;
-      width: 100%;
-      max-width: 950px;
-      margin: 20px auto;
-    }
-    h1 { text-align: center; margin-top: 0; margin-bottom: 25px; font-weight: 600; font-size: 2rem; }
+    .vix-val { font-size: 1.2rem; font-weight: bold; color: #a282e8; }
     
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; }
-    .form-group { display: flex; flex-direction: column; }
-    .full-width { grid-column: span 2; }
-    label { font-size: 0.85rem; color: #aaa; margin-bottom: 5px; font-weight: 500; }
-    .days-left { color: #ffc107; margin-left: 5px; font-size: 0.8rem; }
-    .input-wrapper { display: flex; gap: 10px; }
-    input, select {
-      padding: 10px 12px; border-radius: 6px; border: 1px solid #444;
-      background: var(--input-bg); color: #000; font-size: 1rem; flex-grow: 1;
+    .container { 
+      background: var(--glass); backdrop-filter: blur(15px); padding: 2.5rem; border-radius: 20px; 
+      border: 1px solid rgba(255, 255, 255, 0.1); margin: 2rem 1rem;
     }
+    .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
+    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end; grid-column: span 2; }
+    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
+    input, select { 
+      width: 100%; padding: 0.75rem; border: 1px solid #444; border-radius: 8px; 
+      background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
+    }
+    .warning-box { color: var(--danger); font-size: 0.75rem; margin-top: 5px; display: none; font-weight: bold; }
+    button { padding: 0.75rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-fetch { background: var(--success); color: white; }
+    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
+    .picker-btn { display:block; width:100%; margin:5px 0; padding:12px; background:#222; color:white; border:1px solid #444; border-radius:6px; cursor:pointer; text-align:left; }
+    .picker-btn:hover { background: #333; border-color: var(--primary); }
+    
+    #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    .summary-item label { font-size: 0.7rem; text-transform: uppercase; margin-bottom: 5px; }
+    .summary-item span { font-size: 1.1rem; font-weight: bold; }
 
-    .btn-fetch { background-color: #28a745; color: white; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; }
-    .btn-pick { background-color: #444; color: white; padding: 10px 15px; border-radius: 6px; cursor: pointer; border: none; }
-    .btn-run { background-color: var(--primary-blue); color: white; font-size: 1.1rem; padding: 14px; margin-top: 15px; border-radius: 8px; cursor: pointer; border: none; font-weight: bold; }
-    
-    #resultsArea { display: none; margin-top: 30px; }
-    .summary-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 25px; }
-    .card { background: var(--card-bg); padding: 15px; border-radius: 10px; border-left: 4px solid var(--primary-blue); border: 1px solid #222; border-left-width: 4px; }
-    .card-label { font-size: 0.7rem; color: #aaa; margin-bottom: 5px; display: block; text-transform: uppercase; }
-    .card-value { font-size: 1.1rem; font-weight: 700; }
-    .chart-container { height: 400px; background: #0a0a0a; border-radius: 12px; padding: 15px; border: 1px solid #222; }
-    
-    .greeks-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 25px; }
-    .greek-item { background: var(--card-bg); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #222; }
-    .greek-title { font-size: 0.7rem; color: var(--primary-blue); font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 5px; }
-    .help-tip { width: 14px; height: 14px; border-radius: 50%; background: rgba(0, 123, 255, 0.1); color: var(--primary-blue); border: 1px solid var(--primary-blue); font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-    .picker-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: flex; justify-content: center; align-items: center; }
-    .picker-box { background: #1a1a1a; padding: 25px; border-radius: 12px; width: 340px; max-height: 75vh; overflow-y: auto; border: 1px solid #333; }
-    .pick-option-btn { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px; cursor: pointer; text-align: left; }
-    
-    footer { margin: 40px 0; color: #555; font-size: 0.8rem; text-align: center; line-height: 1.5; }
+    .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; margin-top: 20px; }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
+    .dte-badge { font-size: 0.75rem; color: #ffd700; font-weight: bold; margin-left: 10px; }
+    footer { margin: 3rem 0; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
   </style>
 </head>
 <body>
 
-<div class="live-bar">
-    <div class="ticker-item"><span>VIX:</span> <span id="vixVal" class="val-neutral">--</span></div>
-    <div class="ticker-item"><span>10Y Yield (TNX):</span> <span id="tnxVal" class="val-neutral">--</span></div>
+<div class="vix-banner">
+    <div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Live Market Macro</div>
+      <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
+    </div>
+    <div style="text-align: right; display: flex; gap: 20px;">
+      <div><span style="font-size: 0.7rem; color: #888;">VIX:</span> <span id="vixVal" class="vix-val">--</span></div>
+      <div><span style="font-size: 0.7rem; color: #888;">TNX (10Y):</span> <span id="tnxVal" style="color:#28a745; font-weight:bold; font-size: 1.2rem;">--</span>%</div>
+    </div>
 </div>
 
 <div class="container">
-  <h1>Options Probability Calculator</h1>
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Probability Calculator</h1>
 
-  <div class="form-grid">
-    <div class="form-group full-width">
-      <label>Ticker Symbol</label>
-      <div class="input-wrapper">
-        <input type="text" id="ticker" placeholder="e.g. ACHR">
-        <button class="btn-fetch" onclick="fetchPrice()">Fetch Price</button>
+  <form id="optionForm" class="grid-form">
+    <div class="ticket-row">
+      <div style="flex: 1;">
+        <label>Ticker Symbol</label>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+          <img id="stockLogo" style="width: 24px; height: 24px; display: none; border-radius: 4px;">
+          <span id="companyName" style="font-size: 0.8rem; color: #aaa;"></span>
+        </div>
+        <input type="text" id="symbol" placeholder="e.g. ACHR" oninput="clearCache()" />
       </div>
+      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Price</button>
     </div>
 
-    <div class="form-group"><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01"></div>
-    <div class="form-group"><label>Contracts (Qty)</label><input type="number" id="qty" value="1"></div>
-
-    <div class="form-group">
-      <label>Expiration Date <span id="daysLeft" class="days-left"></span></label>
-      <div class="input-wrapper">
-        <input type="text" id="expiry" readonly placeholder="YYYY-MM-DD">
-        <button class="btn-pick" onclick="openExpiryPicker()">Pick</button>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label>Strike Price ($)</label>
-      <div class="input-wrapper">
-        <input type="number" id="strike" step="0.01">
-        <button class="btn-pick" onclick="openStrikePicker()">Pick</button>
-      </div>
-    </div>
-
-    <div class="form-group"><label>Option Type</label><select id="oType"><option value="call">Call</option><option value="put" selected>Put</option></select></div>
-    <div class="form-group"><label>Risk-Free Rate (%)</label><input type="number" id="rfRate" value="4.25" step="0.01"></div>
-    <div class="form-group"><label>Dividend Yield (%)</label><input type="number" id="divYield" value="0.00" step="0.01"></div>
-    <div class="form-group"><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" placeholder="Enter Premium"></div>
+    <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
+    <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" /></div>
     
-    <div class="form-group full-width">
+    <div>
+      <label>Expiration Date <span id="dteLabel" class="dte-badge"></span></label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="expiry" placeholder="YYYY-MM-DD" readonly />
+        <button type="button" onclick="showExpirationPicker()" style="background:#444; color:white;">Pick</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Strike Price ($)</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="number" id="strike" step="0.01" />
+        <button type="button" onclick="showStrikePicker()" style="background:#444; color:white;">Pick</button>
+      </div>
+    </div>
+
+    <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put" selected>Put</option></select></div>
+    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
+    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" step="0.01" /></div>
+    <div>
+        <label>Premium (Market Price)</label>
+        <input type="number" id="premium" step="0.01" value="0.00" oninput="checkPremiumWarn()"/>
+        <div id="premWarning" class="warning-box">⚠️ Market price missing. Please verify and enter manually.</div>
+    </div>
+    <div style="grid-column: span 2;">
         <label>Implied Volatility (%)</label>
-        <input type="text" id="ivInput" placeholder="Calculated on Pick" readonly>
+        <input type="number" id="iv" readonly style="background: rgba(255,255,255,0.1); color: #fff;" />
     </div>
 
-    <button class="btn-run full-width" onclick="runAnalysis()">Run Full Analysis</button>
-  </div>
+    <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
+  </form>
 
-  <div id="resultsArea">
-    <div class="summary-cards">
-      <div class="card"><span class="card-label">Prob. of Profit</span><span class="card-value" id="resPop">--</span></div>
-      <div class="card"><span class="card-label">Total Cost</span><span class="card-value" id="resCost">--</span></div>
-      <div class="card"><span class="card-label">Max Profit</span><span class="card-value" id="resMaxP">--</span></div>
-      <div class="card"><span class="card-label">Max Loss</span><span class="card-value" id="resMaxL">--</span></div>
-      <div class="card"><span class="card-label">Breakeven</span><span class="card-value" id="resBE">--</span></div>
+  <div id="results"> 
+    <div class="summary-grid">
+      <div class="summary-item"><label>Prob. of Profit</label><br><span id="pop">--</span></div>
+      <div class="summary-item"><label>Total Cost</label><br><span id="resCost">--</span></div>
+      <div class="summary-item"><label>Max Profit</label><br><span id="resProfit">--</span></div>
+      <div class="summary-item"><label>Max Loss</label><br><span id="resLoss">--</span></div>
+      <div class="summary-item"><label>Breakeven</label><br><span id="resBreak">--</span></div>
+    </div>
+    
+    <div style="height: 400px; background: rgba(0,0,0,0.5); border-radius: 15px; padding: 15px; border: 1px solid rgba(255,255,255,0.1);">
+        <canvas id="payoffChart"></canvas>
     </div>
 
-    <div class="chart-container"><canvas id="payoffChart"></canvas></div>
-
-    <div class="greeks-cards">
-      <div class="greek-item">
-        <div class="greek-title">DELTA <div class="help-tip" onclick="alert('Delta: Change in option price for a $1 stock move.')">?</div></div>
-        <span id="gDelta">--</span>
-      </div>
-      <div class="greek-item">
-        <div class="greek-title">GAMMA <div class="help-tip" onclick="alert('Gamma: Rate of change in Delta.')">?</div></div>
-        <span id="gGamma">--</span>
-      </div>
-      <div class="greek-item">
-        <div class="greek-title">THETA <div class="help-tip" onclick="alert('Theta: Daily time decay.')">?</div></div>
-        <span id="gTheta">--</span>
-      </div>
-      <div class="greek-item">
-        <div class="greek-title">VEGA <div class="help-tip" onclick="alert('Vega: Change for 1% Volatility move.')">?</div></div>
-        <span id="gVega">--</span>
-      </div>
-      <div class="greek-item">
-        <div class="greek-title">RHO <div class="help-tip" onclick="alert('Rho: Change for 1% Interest Rate move.')">?</div></div>
-        <span id="gRho">--</span>
-      </div>
+    <div class="greeks-grid">
+      <div class="greek-card"><span class="greek-name">DELTA</span><span id="d">--</span></div>
+      <div class="greek-card"><span class="greek-name">GAMMA</span><span id="g">--</span></div>
+      <div class="greek-card"><span class="greek-name">THETA</span><span id="t">--</span></div>
+      <div class="greek-card"><span class="greek-name">VEGA</span><span id="v">--</span></div>
+      <div class="greek-card"><span class="greek-name">RHO</span><span id="r">--</span></div>
     </div>
   </div>
-</div>
 
-<footer>
+  <footer>
     &copy; 2026 Options Probability Calculator. All rights reserved.<br>
-    Released under the MIT License.
-</footer>
+    Released under the MIT License. Data refreshed in real-time.
+  </footer>
+</div>
 
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
 const PROXY = "https://corsproxy.io/?";
-let chartInstance = null, chainCache = null, currentSym = null;
 
-// --- LIVE TICKER LOGIC (1s Refresh) ---
-async function updateLiveTicker() {
-    try {
-        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX")).then(r => r.json());
-        const tnxRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX")).then(r => r.json());
-        document.getElementById('vixVal').innerText = vixRes.chart.result[0].meta.regularMarketPrice.toFixed(2);
-        const tnxVal = tnxRes.chart.result[0].meta.regularMarketPrice;
-        document.getElementById('tnxVal').innerText = tnxVal.toFixed(2) + "%";
-        if (!document.getElementById('rfRate').value || document.getElementById('rfRate').value == "4.25") {
-            document.getElementById('rfRate').value = tnxVal.toFixed(2);
-        }
-    } catch(e) {}
-}
-setInterval(updateLiveTicker, 1000);
-updateLiveTicker();
+let payoffChart = null, cachedChain = null;
 
-const N = (x) => {
-    const t = 1/(1 + 0.2316419*Math.abs(x));
-    const d = 0.3989423*Math.exp(-x*x/2);
-    const p = d*t*(0.3193815 + t*(-0.3565638 + t*(1.781478 + t*(-1.821256 + t*1.330274))));
+// --- UTILS ---
+const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+const normCDF = (x) => {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
     return x > 0 ? 1 - p : p;
 };
 
-async function fetchPrice() {
-    const sym = document.getElementById('ticker').value.toUpperCase();
+// --- MACRO SYNC (Every 1s for VIX/TNX) ---
+async function syncMacro() {
+    try {
+        const tnxRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX")).then(r => r.json());
+        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX")).then(r => r.json());
+        
+        const rate = tnxRes.chart.result[0].meta.regularMarketPrice;
+        const vix = vixRes.chart.result[0].meta.regularMarketPrice;
+        
+        document.getElementById('tnxVal').textContent = rate.toFixed(2);
+        document.getElementById('vixVal').textContent = vix.toFixed(2);
+        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+        if(document.getElementById('rf').value == "4.25" || !document.getElementById('rf').value) {
+            document.getElementById('rf').value = rate.toFixed(2);
+        }
+    } catch (e) {}
+}
+setInterval(syncMacro, 1000); syncMacro();
+
+function checkPremiumWarn() {
+    const p = parseFloat(document.getElementById('premium').value);
+    const warn = document.getElementById('premWarning');
+    warn.style.display = (isNaN(p) || p <= 0) ? 'block' : 'none';
+}
+
+async function fetchTicketData() {
+    const sym = document.getElementById('symbol').value.toUpperCase();
     if(!sym) return;
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
-    if(res.c) { document.getElementById('stockPrice').value = res.c.toFixed(2); chainCache = null; currentSym = sym; }
+    const q = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
+    if(q.c) document.getElementById('stockPrice').value = q.c.toFixed(2);
+    const p = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
+    if(p.logo) { document.getElementById('stockLogo').src = p.logo; document.getElementById('stockLogo').style.display = 'block'; }
+    document.getElementById('companyName').textContent = p.name || "";
+    cachedChain = null;
 }
 
 async function getChain() {
-    const sym = document.getElementById('ticker').value.toUpperCase();
-    if(chainCache && currentSym === sym) return chainCache;
+    const sym = document.getElementById('symbol').value.toUpperCase();
+    if (cachedChain && cachedChain.symbol === sym) return cachedChain.data;
     const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&expired=false&limit=1000&apiKey=${POLYGON_KEY}`).then(r => r.json());
-    chainCache = res.results; currentSym = sym; return chainCache;
+    cachedChain = { symbol: sym, data: res.results };
+    return res.results;
 }
 
-function openExpiryPicker() {
-    const overlay = document.createElement('div'); overlay.className='picker-overlay';
-    const box = document.createElement('div'); box.className='picker-box';
-    box.innerHTML = `<h3>Select Expiration</h3><div id="list">Loading...</div>`;
-    overlay.appendChild(box); document.body.appendChild(overlay);
-    overlay.onclick = (e) => { if(e.target===overlay) overlay.remove(); };
-    getChain().then(chain => {
-        const dates = [...new Set(chain.map(c => c.expiration_date))].sort();
-        const list = box.querySelector('#list'); list.innerHTML = '';
-        dates.forEach(d => {
-            const btn = document.createElement('button'); btn.className='pick-option-btn'; btn.textContent = d;
-            btn.onclick = () => {
-                document.getElementById('expiry').value = d;
-                const diff = Math.ceil((new Date(d) - new Date()) / 86400000);
-                document.getElementById('daysLeft').textContent = `(${diff} Days Left)`;
-                overlay.remove();
-            };
-            list.appendChild(btn);
-        });
+async function showExpirationPicker() {
+    const chain = await getChain();
+    const dates = [...new Set(chain.map(c => c.expiration_date))].sort();
+    const overlay = createOverlay("Select Expiry");
+    dates.forEach(date => {
+        const btn = document.createElement('button');
+        btn.className = "picker-btn"; btn.textContent = date;
+        btn.onclick = () => { 
+            document.getElementById('expiry').value = date; 
+            const diff = Math.ceil((new Date(date) - new Date()) / 86400000);
+            document.getElementById('dteLabel').textContent = `(${diff} Days Left)`;
+            overlay.remove(); 
+        };
+        overlay.firstChild.appendChild(btn);
     });
 }
 
-function openStrikePicker() {
+async function showStrikePicker() {
     const exp = document.getElementById('expiry').value;
-    const type = document.getElementById('oType').value;
-    if(!exp) return alert("Pick Expiry first");
-    const overlay = document.createElement('div'); overlay.className='picker-overlay';
-    const box = document.createElement('div'); box.className='picker-box';
-    box.innerHTML = `<h3>Select Strike</h3><div id="list">Loading...</div>`;
-    overlay.appendChild(box); document.body.appendChild(overlay);
-    overlay.onclick = (e) => { if(e.target===overlay) overlay.remove(); };
-    getChain().then(chain => {
-        const filtered = chain.filter(c => c.expiration_date === exp && c.contract_type === type).sort((a,b)=>a.strike_price - b.strike_price);
-        const list = box.querySelector('#list'); list.innerHTML = '';
-        filtered.forEach(o => {
-            const btn = document.createElement('button'); btn.className='pick-option-btn';
-            btn.textContent = `$${o.strike_price} (IV: ${(o.implied_volatility*100).toFixed(1)}%)`;
-            btn.onclick = () => {
-                document.getElementById('strike').value = o.strike_price;
-                document.getElementById('ivInput').value = (o.implied_volatility*100).toFixed(2);
-                overlay.remove();
-            };
-            list.appendChild(btn);
-        });
+    const type = document.getElementById('type').value;
+    if (!exp) return alert("Select expiry first");
+    const chain = await getChain();
+    const overlay = createOverlay("Select Strike");
+    chain.filter(c => c.expiration_date === exp && c.contract_type === type)
+         .sort((a,b) => a.strike_price - b.strike_price).forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "picker-btn";
+        btn.textContent = `Strike: $${opt.strike_price} | IV: ${(opt.implied_volatility * 100).toFixed(1)}%`;
+        btn.onclick = () => { 
+            document.getElementById('strike').value = opt.strike_price;
+            document.getElementById('iv').value = (opt.implied_volatility * 100).toFixed(2);
+            overlay.remove(); 
+        };
+        overlay.firstChild.appendChild(btn);
     });
+}
+
+function createOverlay(title) {
+    const div = document.createElement('div');
+    div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:2000; display:flex; align-items:center; justify-content:center;";
+    const box = document.createElement('div');
+    box.style.cssText = "background:#1a1a1a; padding:20px; border-radius:12px; max-height:80vh; overflow-y:auto; width:380px; border:1px solid #333;";
+    box.innerHTML = `<h3 style="margin-top:0; color:#4db8ff;">${title}</h3>`;
+    div.appendChild(box); document.body.appendChild(div);
+    div.onclick = (e) => { if (e.target === div) div.remove(); };
+    return div;
 }
 
 function runAnalysis() {
     const prem = parseFloat(document.getElementById('premium').value);
-    if(isNaN(prem)) return alert("Missing required Premium price data.");
+    if (isNaN(prem) || prem <= 0) return alert("Please enter the Option Premium price.");
 
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
-    const IV = parseFloat(document.getElementById('ivInput').value)/100 || 0.40;
-    const qty = parseInt(document.getElementById('qty').value) || 1;
-    const type = document.getElementById('oType').value;
-    const r = parseFloat(document.getElementById('rfRate').value)/100;
-    const T = Math.max(0.001, (new Date(document.getElementById('expiry').value) - new Date()) / 31536000000);
+    const r = parseFloat(document.getElementById('rf').value) / 100;
+    const type = document.getElementById('type').value;
+    const qty = parseInt(document.getElementById('qty').value);
+    const iv = parseFloat(document.getElementById('iv').value) / 100 || 0.4;
+    const expiryDate = new Date(document.getElementById('expiry').value);
+    const T = Math.max(0.001, (expiryDate - new Date()) / (1000 * 60 * 60 * 24 * 365));
 
-    const d1 = (Math.log(S/K) + (r + 0.5*IV*IV)*T) / (IV*Math.sqrt(T));
-    const d2 = d1 - IV*Math.sqrt(T);
-    const be = type==='call' ? K+prem : K-prem;
+    const d1 = (Math.log(S/K) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
+    const d2 = d1 - (iv * Math.sqrt(T));
+    const be = type === 'call' ? K + prem : K - prem;
 
-    document.getElementById('resultsArea').style.display = 'block';
-    document.getElementById('resPop').innerText = (type==='call' ? N(d2)*100 : N(-d2)*100).toFixed(1) + '%';
-    document.getElementById('resCost').innerText = '$' + (prem*100*qty).toFixed(0);
-    document.getElementById('resMaxP').innerText = type==='call' ? 'Unlimited' : '$' + ((K-prem)*100*qty).toFixed(0);
-    document.getElementById('resMaxL').innerText = '$' + (prem*100*qty).toFixed(0);
-    document.getElementById('resBE').innerText = be.toFixed(2);
-    
-    document.getElementById('gDelta').innerText = (type==='call' ? N(d1) : N(d1)-1).toFixed(3);
-    document.getElementById('gGamma').innerText = (Math.exp(-d1*d1/2) / (Math.sqrt(2*Math.PI) * S * IV * Math.sqrt(T))).toFixed(4);
-    document.getElementById('gTheta').innerText = (-(S * Math.exp(-d1*d1/2) / Math.sqrt(2*Math.PI) * IV / (2 * Math.sqrt(T))) / 365).toFixed(3);
-    document.getElementById('gVega').innerText = (S * Math.sqrt(T) * Math.exp(-d1*d1/2) / Math.sqrt(2*Math.PI) / 100).toFixed(3);
-    document.getElementById('gRho').innerText = ( (type==='call' ? K*T*Math.exp(-r*T)*N(d2) : -K*T*Math.exp(-r*T)*N(-d2)) / 100).toFixed(3);
-    
-    renderChart(S, K, T, r, IV, type, prem, qty, be);
+    document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
+    document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
+    document.getElementById('resBreak').textContent = be.toFixed(2);
+    document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
+    document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
+
+    document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
+    document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
+    document.getElementById('t').textContent = (-(S * normPDF(d1) * iv / (2 * Math.sqrt(T)) / 365)).toFixed(3);
+    document.getElementById('v').textContent = (S * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
+    document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
+
+    document.getElementById('results').style.display = 'block';
+    drawChart(S, K, type, prem, qty, be);
 }
 
-function renderChart(S, K, T, r, IV, type, prem, qty, be) {
+function drawChart(S, K, type, prem, qty, be) {
     const ctx = document.getElementById('payoffChart').getContext('2d');
     const labels = [], data = [];
-    const min = S * 0.7, max = S * 1.3;
-    for(let p=min; p<=max; p+=(max-min)/60) {
+    for (let p = S * 0.7; p <= S * 1.3; p += (S * 0.6)/60) {
         labels.push(p.toFixed(2));
-        data.push(((type==='call' ? Math.max(0, p-K) : Math.max(0, K-p)) - prem) * 100 * qty);
+        let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
+        data.push((intrinsic - prem) * 100 * qty);
     }
-    if(chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(ctx, {
+    if (payoffChart) payoffChart.destroy();
+    payoffChart = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ label: 'At Expiry', data, borderColor: '#007bff', backgroundColor: 'rgba(0,123,255,0.1)', fill: true, pointRadius: 0 }] },
-        options: {
-            responsive: true, maintainAspectRatio: false,
+        data: { labels, datasets: [{ label: 'Profit/Loss at Expiry', data, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius:0 }] },
+        options: { 
+            responsive:true, maintainAspectRatio:false,
             plugins: {
                 annotation: {
                     annotations: {
-                        s: { type: 'line', xMin: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-S)<Math.abs(a-S)?b:a)), xMax: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-S)<Math.abs(a-S)?b:a)), borderColor: '#ffc107', label: { display: true, content: 'Price', yAdjust: type==='call'?35:-35, backgroundColor:'#ffc107', color:'#000' } },
-                        b: { type: 'line', xMin: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-be)<Math.abs(a-be)?b:a)), xMax: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-be)<Math.abs(a-be)?b:a)), borderColor: '#dc3545', label: { display: true, content: 'BE', yAdjust: type==='call'?-35:35, backgroundColor:'#dc3545', color:'#fff' } }
+                        curr: { type: 'line', xMin: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-S)<Math.abs(a-S)?b:a)), xMax: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-S)<Math.abs(a-S)?b:a)), borderColor: '#ffcc00', label: { display:true, content: 'Price', backgroundColor:'#ffcc00', color:'#000' } },
+                        be: { type: 'line', xMin: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-be)<Math.abs(a-be)?b:a)), xMax: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-be)<Math.abs(a-be)?b:a)), borderColor: '#ff4d4d', label: { display:true, content: 'BE', backgroundColor:'#ff4d4d' } }
                     }
                 }
             }
         }
     });
 }
+function clearCache() { cachedChain = null; }
 </script>
 </body>
 </html>
