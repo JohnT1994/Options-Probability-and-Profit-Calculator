@@ -54,7 +54,7 @@
 <div class="container">
   <div class="vix-banner">
     <div>
-      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Live)</div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Yahoo Finance)</div>
       <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
     </div>
     <div style="text-align: right;">
@@ -122,11 +122,11 @@
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
-      <div class="greek-card"><span class="greek-name">DELTA <span class="help" onclick="showGreekHelp('Speed:How much your option price moves for every $1 move in the stock.')">?</span></span><span id="d" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">GAMMA <span class="help" onclick="showGreekHelp('Acceleration:How much your Delta increases or decreases as the stock moves.')">?</span></span><span id="g" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">THETA <span class="help" onclick="showGreekHelp('Time Decay:The daily "rent" or time decay you pay just for holding the contract.')">?</span></span><span id="t" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">VEGA <span class="help" onclick="showGreekHelp('Fear Gauge:Your sensitivity to "expected" chaos or volatility in the market.')">?</span></span><span id="v" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">RHO <span class="help" onclick="showGreekHelp('Interest Rate Tracker:The impact of changing interest rates (the least impactful for most retail traders).')">?</span></span><span id="r" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">DELTA <span class="help" onclick="showGreekHelp('Speed: How much your option price moves for every $1 move in the stock.')">?</span></span><span id="d" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">GAMMA <span class="help" onclick="showGreekHelp('Acceleration: How much your Delta increases or decreases as the stock moves.')">?</span></span><span id="g" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">THETA <span class="help" onclick="showGreekHelp('Time Decay: The daily cost or time decay you pay just for holding the contract.')">?</span></span><span id="t" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">VEGA <span class="help" onclick="showGreekHelp('Fear Gauge: Your sensitivity to expected chaos or volatility in the market.')">?</span></span><span id="v" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">RHO <span class="help" onclick="showGreekHelp('Interest Rate Tracker: The impact of changing interest rates.')">?</span></span><span id="r" class="greek-val">--</span></div>
     </div>
   </div>
 
@@ -205,67 +205,48 @@ function updateClock() {
     document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
-// FIXED: Use Polygon.io snapshot for real-time VIX
 async function fetchVIX() {
     const vixDisplay = document.getElementById('vixVal');
-    vixDisplay.textContent = "...";
-
-    const url = `https://api.polygon.io/v3/snapshot/indices?ticker.any_of=I:VIX&apiKey=${POLYGON_KEY}`;
-
+    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=^VIX`;
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("API error");
-
+        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
         const data = await response.json();
-        if (data.results && data.results.length > 0) {
-            vixDisplay.textContent = data.results[0].value.toFixed(2);
+        const result = data.quoteResponse.result[0];
+        if (result && result.regularMarketPrice) {
+            vixDisplay.textContent = result.regularMarketPrice.toFixed(2);
             vixDisplay.style.color = "#a282e8";
-        } else {
-            vixDisplay.textContent = "N/A";
         }
     } catch (err) {
-        console.error("VIX fetch failed:", err);
-        vixDisplay.textContent = "N/A";
+        console.error("Yahoo VIX fetch failed:", err);
     }
 }
 
-// FIXED: Use Polygon.io for TNX
 async function fetchTNX() {
     const tnxDisplay = document.getElementById('tnxVal');
     const rfInput = document.getElementById('rf');
-    tnxDisplay.textContent = "...";
-
-    const url = `https://api.polygon.io/v3/snapshot/indices?ticker.any_of=I:TNX&apiKey=${POLYGON_KEY}`;
-
+    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=^TNX`;
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("API error");
-
+        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
         const data = await response.json();
-        if (data.results && data.results.length > 0) {
-            const value = data.results[0].value.toFixed(3);
+        const result = data.quoteResponse.result[0];
+        if (result && result.regularMarketPrice) {
+            const value = result.regularMarketPrice.toFixed(3);
             tnxDisplay.textContent = value;
             rfInput.value = value;
             tnxDisplay.style.color = "#28a745";
-        } else {
-            tnxDisplay.textContent = "N/A";
-            rfInput.value = "4.00";
         }
     } catch (err) {
-        console.error("TNX fetch failed:", err);
-        tnxDisplay.textContent = "4.00";
-        rfInput.value = "4.00";
+        console.error("Yahoo TNX fetch failed:", err);
     }
 }
 
-// Timers – VIX every 1 second (to match Yahoo real-time as closely as possible), TNX every minute
 updateClock();
 fetchVIX();
 fetchTNX();
 
 setInterval(updateClock, 1000);
-setInterval(fetchVIX, 1000);
-setInterval(fetchTNX, 60000);
+setInterval(fetchVIX, 15000); 
+setInterval(fetchTNX, 86400000);
 
 function showGreekHelp(text) {
   alert(text);
@@ -340,12 +321,10 @@ async function showStrikePicker() {
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
-        
         let finalPrice = opt.marketMid;
         if (finalPrice <= 0 && opt.iv) {
             finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
         }
-
         const btn = document.createElement('button');
         btn.className = "picker-btn";
         btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
