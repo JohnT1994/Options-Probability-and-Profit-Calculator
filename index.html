@@ -3,178 +3,259 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Analysis Station</title>
+  <title>Options calculator</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
+    :root { 
+      --primary: #007bff; --success: #28a745; --accent: #6f42c1; --danger: #ff4d4d;
+      --glass: rgba(0, 0, 0, 0.9); 
+    }
     body { 
-      font-family: 'Segoe UI', sans-serif; background-color: #000; color: #fff;
-      background-image: url('https://i.imgur.com/nVWumk7.png'); background-size: cover; background-attachment: fixed;
-      margin: 0; padding: 20px; display: flex; justify-content: center;
+      font-family: 'Segoe UI', sans-serif; background-image: url('https://i.imgur.com/nVWumk7.png'); 
+      background-size: cover; background-position: center; background-attachment: fixed;
+      color: #ffffff; max-width: 950px; margin: 2rem auto; padding: 0 1rem; 
     }
-    .main-station { background: rgba(0, 0, 0, 0.95); width: 100%; max-width: 900px; padding: 30px; border-radius: 15px; border: 1px solid #333; }
-    h1 { text-align: center; font-size: 2.2rem; margin-bottom: 30px; }
-    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .full-width { grid-column: span 2; }
-    .input-group { display: flex; flex-direction: column; }
-    label { font-size: 0.8rem; color: #aaa; margin-bottom: 5px; font-weight: bold; }
-    input, select { padding: 12px; border-radius: 8px; border: 1px solid #444; background: #fff; color: #000; font-size: 1rem; }
-    .row-btn { display: flex; gap: 10px; align-items: flex-end; }
-    .btn-green { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-    .btn-gray { background: #444; color: white; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; }
-    .btn-blue { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1.1rem; margin-top: 10px; }
-    
-    /* Summary Cards */
-    #results { display: none; margin-top: 30px; }
-    .summary-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; }
-    .card { background: #111; padding: 20px; border-radius: 12px; border-left: 4px solid #007bff; }
-    .card label { font-size: 0.75rem; color: #888; }
-    .card div { font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
-
-    /* Chart Container */
-    .chart-box { background: #000; border-radius: 12px; padding: 20px; border: 1px solid #222; height: 400px; position: relative; }
-
-    /* Greeks Section */
-    .greeks-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 20px; }
-    .greek-box { background: #1a1a1a; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #333; }
-    .greek-label { font-size: 0.7rem; color: #4db8ff; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 5px; }
-    .q-btn { width: 14px; height: 14px; border: 1px solid #4db8ff; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-    
-    footer { text-align: center; margin-top: 40px; font-size: 0.7rem; color: #555; line-height: 1.6; }
-
-    @media (max-width: 600px) {
-      .input-grid, .summary-row, .greeks-row { grid-template-columns: 1fr 1fr; }
-      .full-width { grid-column: span 2; }
+    .container { 
+      background: var(--glass); backdrop-filter: blur(15px); padding: 2.5rem; border-radius: 20px; 
+      border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 50px rgba(0,0,0,0.8);
     }
+    .vix-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      background: linear-gradient(90deg, rgba(111, 66, 193, 0.1), rgba(0, 123, 255, 0.1));
+      padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .vix-val { font-size: 1.5rem; font-weight: bold; color: #a282e8; }
+    .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
+    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end !important; grid-column: span 2; }
+    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
+    input, select { 
+      width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; 
+      background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
+    }
+    button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-fetch { background: var(--success); color: white; }
+    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
+    .picker-btn { background:#444; color:white; padding: 10px; border-radius: 6px; cursor: pointer; }
+    .ov-btn { display:block; width:100%; margin:5px 0; padding:12px; background:#333; color:white; border:1px solid #555; border-radius:6px; cursor:pointer; text-align:left; }
+    #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    
+    .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; margin-top: 20px; }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.3rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .greek-label { font-size:0.65rem; color:#4db8ff; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px; }
+    .q-mark { background: rgba(77, 184, 255, 0.1); color: #4db8ff; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; border: 1px solid #4db8ff; }
+    
+    footer { margin-top: 3rem; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
+    @media (max-width: 600px) { .greeks-grid, .summary-grid { grid-template-columns: repeat(2, 1fr); } }
   </style>
 </head>
 <body>
 
-<div class="main-station">
-  <h1>Options Analysis Station</h1>
-
-  <div class="input-grid">
-    <div class="input-group full-width">
-      <label>Ticker Symbol</label>
-      <div class="row-btn">
-        <input type="text" id="symbol" style="flex:1" placeholder="e.g. NVDA">
-        <button class="btn-green" onclick="fetchPrice()">Fetch Price</button>
-      </div>
+<div class="container">
+  <div class="vix-banner">
+    <div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Live)</div>
+      <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
     </div>
-
-    <div class="input-group"><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01"></div>
-    <div class="input-group"><label>Contracts (Qty)</label><input type="number" id="qty" value="1"></div>
-
-    <div class="input-group">
-      <label>Expiration Date</label>
-      <div class="row-btn"><input type="text" id="expiry" readonly><button class="btn-gray" onclick="pickExpiry()">Pick</button></div>
+    <div style="text-align: right;">
+      <div style="font-size: 0.65rem; color: #888;">VIX: <span id="vixVal" class="vix-val">--</span></div>
+      <div style="font-size: 0.65rem; color: #888;">10Y Treasury: <span id="tnxVal" style="color:#28a745; font-weight:bold;">--</span>%</div>
     </div>
-    <div class="input-group">
-      <label>Strike Price ($)</label>
-      <div class="row-btn"><input type="number" id="strike"><button class="btn-gray" onclick="pickStrike()">Pick</button></div>
-    </div>
-
-    <div class="input-group"><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
-    <div class="input-group"><label>Risk-Free Rate (%)</label><input type="number" id="rf" value="4.25" step="0.01"></div>
-    <div class="input-group"><label>Dividend Yield (%)</label><input type="number" id="div" value="0.00"></div>
-    <div class="input-group"><label>Premium (Market Price)</label><input type="number" id="prem" step="0.01"></div>
-
-    <div class="input-group full-width">
-      <label>Implied Volatility (%)</label>
-      <input type="text" id="iv" placeholder="Calculated on Pick">
-    </div>
-
-    <button class="btn-blue full-width" onclick="runAnalysis()">Run Full Analysis</button>
   </div>
 
-  <div id="results">
-    <div class="summary-row">
-      <div class="card"><label>Prob. of Profit</label><div id="resPop">--</div></div>
-      <div class="card"><label>Total Cost</label><div id="resCost">--</div></div>
-      <div class="card"><label>Max Profit</label><div id="resProfit">--</div></div>
-      <div class="card"><label>Max Loss</label><div id="resLoss">--</div></div>
-      <div class="card"><label>Breakeven</label><div id="resBe">--</div></div>
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options calculator</h1>
+
+  <form id="optionForm" class="grid-form">
+    <div class="ticket-row">
+      <div style="flex: 1;"><label>Ticker Symbol</label><input type="text" id="symbol" placeholder="e.g. NVDA" oninput="cachedChain=null" /></div>
+      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Price</button>
     </div>
+    <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
+    <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" /></div>
+    <div><label>Expiration Date</label><div style="display: flex; gap: 8px;"><input type="text" id="expiry" readonly /><button type="button" class="picker-btn" onclick="showExpirationPicker()">Pick</button></div></div>
+    <div><label>Strike Price ($)</label><div style="display: flex; gap: 8px;"><input type="number" id="strike" step="0.01" /><button type="button" class="picker-btn" onclick="showStrikePicker()">Pick</button></div></div>
+    <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
+    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
+    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
+    <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" value="0.00" /></div>
+    <div style="grid-column: span 2;"><label>Implied Volatility (%)</label><input type="text" id="iv" placeholder="Calculated on Pick" /></div>
+    <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
+  </form>
 
-    <div class="chart-box"><canvas id="payoffChart"></canvas></div>
-
-    <div class="greeks-row">
-      <div class="greek-box"><div class="greek-label">DELTA <span class="q-btn" onclick="alert('Delta: Price sensitivity to $1 stock move')">?</span></div><span id="d">--</span></div>
-      <div class="greek-box"><div class="greek-label">GAMMA <span class="q-btn" onclick="alert('Gamma: Rate of change in Delta')">?</span></div><span id="g">--</span></div>
-      <div class="greek-box"><div class="greek-label">THETA <span class="q-btn" onclick="alert('Theta: Daily time decay')">?</span></div><span id="t">--</span></div>
-      <div class="greek-box"><div class="greek-label">VEGA <span class="q-btn" onclick="alert('Vega: Sensitivity to volatility')">?</span></div><span id="v">--</span></div>
-      <div class="greek-box"><div class="greek-label">RHO <span class="q-btn" onclick="alert('Rho: Sensitivity to interest rates')">?</span></div><span id="r">--</span></div>
+  <div id="results"> 
+    <div class="summary-grid">
+      <div class="summary-item"><label>Prob. of Profit</label><div id="pop" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Total Cost</label><div id="resCost" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Max Profit</label><div id="resProfit" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Max Loss</label><div id="resLoss" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Breakeven</label><div id="resBreak" style="font-weight:bold;">--</div></div>
+    </div>
+    <div style="height: 450px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);"><canvas id="payoffChart"></canvas></div>
+    <div class="greeks-grid">
+      <div class="greek-card"><div class="greek-label">DELTA <span class="q-mark" onclick="alert('Delta: Sensitivity to stock price move.')">?</span></div><span id="d">--</span></div>
+      <div class="greek-card"><div class="greek-label">GAMMA <span class="q-mark" onclick="alert('Gamma: Rate of change in Delta.')">?</span></div><span id="g">--</span></div>
+      <div class="greek-card"><div class="greek-label">THETA <span class="q-mark" onclick="alert('Theta: Daily time decay.')">?</span></div><span id="t">--</span></div>
+      <div class="greek-card"><div class="greek-label">VEGA <span class="q-mark" onclick="alert('Vega: Sensitivity to volatility.')">?</span></div><span id="v">--</span></div>
+      <div class="greek-card"><div class="greek-label">RHO <span class="q-mark" onclick="alert('Rho: Sensitivity to interest rates.')">?</span></div><span id="r">--</span></div>
     </div>
   </div>
 
   <footer>
-    &copy; 2026 Options Analysis Station. All rights reserved.<br>
-    MIT License: Permission is hereby granted, free of charge, to any person obtaining a copy of this software...
+    &copy; 2026 Options calculator. All rights reserved.<br>
+    Copyright (c) 2026<br>
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software")... (MIT License)
   </footer>
 </div>
 
 <script>
-let chart = null;
+const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
+const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
+const PROXY = "https://corsproxy.io/?";
+
+let payoffChart = null, cachedChain = null;
+
+const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+const normCDF = (x) => {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return x > 0 ? 1 - p : p;
+};
+
+async function syncMacro() {
+    try {
+        const res = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX"));
+        const data = await res.json();
+        const rate = data.chart.result[0].meta.regularMarketPrice;
+        document.getElementById('rf').value = rate.toFixed(2);
+        document.getElementById('tnxVal').textContent = rate.toFixed(2);
+        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX"));
+        const vixData = await vixRes.json();
+        document.getElementById('vixVal').textContent = vixData.chart.result[0].meta.regularMarketPrice.toFixed(2);
+        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+    } catch(e) {}
+}
+syncMacro();
+
+async function fetchTicketData() {
+    const sym = document.getElementById('symbol').value.toUpperCase();
+    const q = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
+    if(q.c) document.getElementById('stockPrice').value = q.c.toFixed(2);
+}
+
+async function getChain() {
+    if (cachedChain) return cachedChain;
+    const sym = document.getElementById('symbol').value.toUpperCase();
+    const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&apiKey=${POLYGON_KEY}`).then(r => r.json());
+    cachedChain = res.results; return cachedChain;
+}
+
+async function showExpirationPicker() {
+    const data = await getChain();
+    const dates = [...new Set(data.map(c => c.expiration_date))].sort();
+    const overlay = createOverlay("Select Expiry");
+    dates.forEach(d => {
+        const btn = document.createElement('button'); btn.className = "ov-btn"; btn.textContent = d;
+        btn.onclick = () => { document.getElementById('expiry').value = d; overlay.remove(); };
+        overlay.firstChild.appendChild(btn);
+    });
+}
+
+async function showStrikePicker() {
+    const expiry = document.getElementById('expiry').value;
+    const type = document.getElementById('type').value;
+    const data = await getChain();
+    const overlay = createOverlay("Select Strike");
+    data.filter(c => c.expiration_date === expiry && c.contract_type === type).forEach(opt => {
+        const btn = document.createElement('button'); btn.className = "ov-btn";
+        btn.textContent = `$${opt.strike_price} (IV: ${(opt.implied_volatility * 100 || 40).toFixed(2)}%)`;
+        btn.onclick = () => {
+            document.getElementById('strike').value = opt.strike_price;
+            document.getElementById('iv').value = (opt.implied_volatility * 100).toFixed(2);
+            overlay.remove();
+        };
+        overlay.firstChild.appendChild(btn);
+    });
+}
+
+function createOverlay(title) {
+    const div = document.createElement('div'); div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center;";
+    const box = document.createElement('div'); box.style.cssText = "background:#1a1a1a; padding:20px; border-radius:12px; width:320px; max-height:70vh; overflow-y:auto; border: 1px solid #333;";
+    box.innerHTML = `<h3 style="color:#007bff;">${title}</h3>`; div.appendChild(box); document.body.appendChild(div);
+    div.onclick = (e) => { if(e.target === div) div.remove(); }; return div;
+}
 
 function runAnalysis() {
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
-    const prem = parseFloat(document.getElementById('prem').value);
+    const prem = parseFloat(document.getElementById('premium').value);
+    const r = parseFloat(document.getElementById('rf').value) / 100;
+    const ivVal = parseFloat(document.getElementById('iv').value) / 100;
     const type = document.getElementById('type').value;
     const qty = parseInt(document.getElementById('qty').value);
+    const expParts = document.getElementById('expiry').value.split('-');
+    const T = Math.max(0.01, (new Date(expParts[0], expParts[1]-1, expParts[2]) - new Date()) / (1000*60*60*24*365));
+
     const be = type === 'call' ? K + prem : K - prem;
+    const d1 = (Math.log(S/K) + (r + 0.5 * ivVal**2) * T) / (ivVal * Math.sqrt(T));
+    const d2 = d1 - (ivVal * Math.sqrt(T));
 
-    document.getElementById('resBe').innerText = be.toFixed(2);
-    document.getElementById('resCost').innerText = "$" + (prem * 100 * qty);
+    document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
+    document.getElementById('g').textContent = (normPDF(d1) / (S * ivVal * Math.sqrt(T))).toFixed(4);
+    document.getElementById('t').textContent = (-(S * normPDF(d1) * ivVal / (2 * Math.sqrt(T)) / 365)).toFixed(3);
+    document.getElementById('v').textContent = (S * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
+    document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
+
+    document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
+    document.getElementById('resBreak').textContent = "$" + be.toFixed(2);
+    document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
+    document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
+    document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
+
     document.getElementById('results').style.display = 'block';
-
-    updateChart(S, K, type, prem, qty, be);
-    // Calculations for Greeks would happen here
-    document.getElementById('d').innerText = "0.542"; // Sample data
+    drawChart(S, K, type, prem, qty, be);
 }
 
-function updateChart(S, K, type, prem, qty, be) {
+function drawChart(S, K, type, prem, qty, be) {
     const ctx = document.getElementById('payoffChart').getContext('2d');
-    const labels = [], dataAtExpiry = [], dataToday = [];
-    for(let i = S*0.8; i <= S*1.2; i += (S*0.4)/50) {
-        labels.push(i.toFixed(2));
-        let profit = type === 'call' ? Math.max(0, i-K)-prem : Math.max(0, K-i)-prem;
-        dataAtExpiry.push(profit * 100 * qty);
-        dataToday.push((profit * 0.7) * 100 * qty); // Simulated T+0
+    const labels = [], expData = [];
+    const minVal = Math.min(S, be) * 0.9;
+    const maxVal = Math.max(S, be) * 1.1;
+
+    for (let p = minVal; p <= maxVal; p += (maxVal - minVal)/100) {
+        labels.push(p.toFixed(2));
+        let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
+        expData.push((intrinsic - prem) * 100 * qty);
     }
 
-    if(chart) chart.destroy();
-    chart = new Chart(ctx, {
+    if (payoffChart) payoffChart.destroy();
+    payoffChart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'At Expiry', data: dataAtExpiry, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius: 0 },
-                { label: 'Today (T+0)', data: dataToday, borderColor: '#fff', borderDash: [5,5], pointRadius: 0 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
+        data: { labels, datasets: [{ label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius:0 }] },
+        options: { 
+            responsive:true, maintainAspectRatio:false,
             plugins: {
                 annotation: {
                     annotations: {
-                        lineBe: {
-                            type: 'line', xMin: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-be)<Math.abs(a-be)?b:a)), 
-                            xMax: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-be)<Math.abs(a-be)?b:a)),
-                            borderColor: '#ff4d4d', borderWidth: 2,
+                        currPrice: { 
+                            type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), 
+                            borderColor: '#ffcc00', borderWidth: 2, 
                             label: { 
-                                display: true, content: 'Breakeven', backgroundColor: '#ff4d4d',
-                                yAdjust: (type === 'call' ? -30 : 30) // OFFSET 1
-                            }
+                                display: true, content: 'Price: $' + S, position: (type === 'call' ? 'end' : 'start'), 
+                                backgroundColor: '#ffcc00', color: '#000', 
+                                yAdjust: (type === 'call' ? 25 : -25) // ANTI-OVERLAP OFFSET
+                            } 
                         },
-                        linePrice: {
-                            type: 'line', xMin: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-S)<Math.abs(a-S)?b:a)),
-                            xMax: labels.indexOf(labels.reduce((a,b)=>Math.abs(b-S)<Math.abs(a-S)?b:a)),
-                            borderColor: '#ffcc00', borderWidth: 2,
+                        breakeven: { 
+                            type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), 
+                            borderColor: '#ff4d4d', borderDash: [2, 2],
                             label: { 
-                                display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000',
-                                yAdjust: (type === 'call' ? 30 : -30) // OFFSET 2
-                            }
+                                display: true, content: 'BE: $' + be.toFixed(2), position: (type === 'call' ? 'start' : 'end'),
+                                backgroundColor: '#ff4d4d', color: '#fff', 
+                                yAdjust: (type === 'call' ? -25 : 25) // ANTI-OVERLAP OFFSET
+                            } 
                         }
                     }
                 }
@@ -182,13 +263,7 @@ function updateChart(S, K, type, prem, qty, be) {
         }
     });
 }
-// Placeholder functions for Fetch/Pick logic
-function fetchPrice() { document.getElementById('stockPrice').value = "182.81"; }
-function pickExpiry() { document.getElementById('expiry').value = "20/03/2026"; }
-function pickStrike() { 
-    document.getElementById('strike').value = "250"; 
-    document.getElementById('iv').value = "25.98"; // IV Injection
-}
+function findIdx(arr, val) { return arr.indexOf(arr.reduce((a,b) => Math.abs(b-val) < Math.abs(a-val) ? b : a)); }
 </script>
 </body>
 </html>
