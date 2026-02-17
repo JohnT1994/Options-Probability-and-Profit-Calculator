@@ -3,259 +3,452 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options calculator</title>
+  <title>Options Analysis Station</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
-    :root { 
-      --primary: #007bff; --success: #28a745; --accent: #6f42c1; --danger: #ff4d4d;
-      --glass: rgba(0, 0, 0, 0.9); 
+    :root {
+      --primary-blue: #007bff;
+      --bg-dark: #000000;
+      --card-bg: #111111;
+      --input-bg: #ffffff;
+      --text-color: #ffffff;
     }
-    body { 
-      font-family: 'Segoe UI', sans-serif; background-image: url('https://i.imgur.com/nVWumk7.png'); 
-      background-size: cover; background-position: center; background-attachment: fixed;
-      color: #ffffff; max-width: 950px; margin: 2rem auto; padding: 0 1rem; 
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at 10% 20%, rgba(0, 123, 255, 0.1) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(111, 66, 193, 0.1) 0%, transparent 20%);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
     }
-    .container { 
-      background: var(--glass); backdrop-filter: blur(15px); padding: 2.5rem; border-radius: 20px; 
-      border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 50px rgba(0,0,0,0.8);
+    .container {
+      background-color: var(--bg-dark);
+      border: 1px solid #222;
+      border-radius: 15px;
+      padding: 30px;
+      width: 100%;
+      max-width: 950px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    .vix-banner {
-      display: flex; justify-content: space-between; align-items: center;
-      background: linear-gradient(90deg, rgba(111, 66, 193, 0.1), rgba(0, 123, 255, 0.1));
-      padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .vix-val { font-size: 1.5rem; font-weight: bold; color: #a282e8; }
-    .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
-    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end !important; grid-column: span 2; }
-    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
-    input, select { 
-      width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; 
-      background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
-    }
-    button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-    .btn-fetch { background: var(--success); color: white; }
-    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
-    .picker-btn { background:#444; color:white; padding: 10px; border-radius: 6px; cursor: pointer; }
-    .ov-btn { display:block; width:100%; margin:5px 0; padding:12px; background:#333; color:white; border:1px solid #555; border-radius:6px; cursor:pointer; text-align:left; }
-    #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    h1 { text-align: center; margin-top: 0; margin-bottom: 25px; font-weight: 600; }
     
-    .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; margin-top: 20px; }
-    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.3rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
-    .greek-label { font-size:0.65rem; color:#4db8ff; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 4px; }
-    .q-mark { background: rgba(77, 184, 255, 0.1); color: #4db8ff; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; border: 1px solid #4db8ff; }
+    /* Form Styling */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; }
+    .form-group { display: flex; flex-direction: column; }
+    .full-width { grid-column: span 2; }
+    label { font-size: 0.85rem; color: #aaa; margin-bottom: 5px; font-weight: 500; }
+    .days-left { color: #ffc107; margin-left: 5px; }
+    .input-wrapper { display: flex; gap: 10px; }
+    input, select {
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: var(--input-bg);
+      color: #000;
+      font-size: 1rem;
+      flex-grow: 1;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--primary-blue); }
     
-    footer { margin-top: 3rem; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
-    @media (max-width: 600px) { .greeks-grid, .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+    /* Buttons */
+    btn { padding: 10px 15px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    btn:hover { opacity: 0.9; }
+    .btn-fetch { background-color: #28a745; color: white; }
+    .btn-pick { background-color: #444; color: white; white-space: nowrap; }
+    .btn-run { background-color: var(--primary-blue); color: white; font-size: 1.1rem; padding: 12px; margin-top: 10px; }
+    
+    /* Results Section */
+    #resultsArea { display: none; margin-top: 30px; }
+    .summary-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 25px; }
+    .card { background: var(--card-bg); padding: 15px; border-radius: 10px; border-left: 4px solid var(--primary-blue); }
+    .card-label { font-size: 0.75rem; color: #aaa; margin-bottom: 5px; display: block; }
+    .card-value { font-size: 1.2rem; font-weight: 700; }
+    
+    /* Chart */
+    .chart-container { height: 400px; background: #0a0a0a; border-radius: 12px; padding: 15px; border: 1px solid #222; }
+    
+    /* Greeks */
+    .greeks-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 25px; }
+    .greek-item { background: var(--card-bg); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid #222; }
+    .greek-title { font-size: 0.7rem; color: var(--primary-blue); font-weight: 700; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .greek-val { font-weight: 600; }
+    .help-tip {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 14px; height: 14px; border-radius: 50%;
+        background: rgba(0, 123, 255, 0.2); color: var(--primary-blue);
+        border: 1px solid var(--primary-blue); font-size: 10px; cursor: pointer;
+    }
+
+    /* Overlay styling */
+    .picker-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; justify-content: center; align-items: center; }
+    .picker-box { background: #1a1a1a; padding: 20px; border-radius: 12px; width: 320px; max-height: 70vh; overflow-y: auto; border: 1px solid #333; }
+    .picker-box h3 { margin-top: 0; color: var(--primary-blue); }
+    .pick-option-btn { display: block; width: 100%; padding: 10px; margin-bottom: 8px; background: #222; border: 1px solid #333; color: #fff; border-radius: 6px; cursor: pointer; text-align: left; }
+    .pick-option-btn:hover { background: #333; border-color: var(--primary-blue); }
+
+    @media (max-width: 768px) {
+        .form-grid, .summary-cards, .greeks-cards { grid-template-columns: 1fr 1fr; }
+        .full-width-mobile { grid-column: span 2; }
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <div class="vix-banner">
-    <div>
-      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Live)</div>
-      <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
+  <h1>Options Analysis Station</h1>
+
+  <div class="form-grid">
+    <div class="form-group full-width">
+      <label>Ticker Symbol</label>
+      <div class="input-wrapper">
+        <input type="text" id="ticker" placeholder="e.g. ACHR">
+        <btn class="btn-fetch" onclick="fetchPrice()">Fetch Price</btn>
+      </div>
     </div>
-    <div style="text-align: right;">
-      <div style="font-size: 0.65rem; color: #888;">VIX: <span id="vixVal" class="vix-val">--</span></div>
-      <div style="font-size: 0.65rem; color: #888;">10Y Treasury: <span id="tnxVal" style="color:#28a745; font-weight:bold;">--</span>%</div>
+
+    <div class="form-group"><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01"></div>
+    <div class="form-group"><label>Contracts (Qty)</label><input type="number" id="qty" value="1"></div>
+
+    <div class="form-group full-width-mobile">
+      <label>Expiration Date <span id="daysLeft" class="days-left"></span></label>
+      <div class="input-wrapper">
+        <input type="text" id="expiry" readonly placeholder="YYYY-MM-DD">
+        <btn class="btn-pick" onclick="openExpiryPicker()">Pick</btn>
+      </div>
     </div>
+
+    <div class="form-group full-width-mobile">
+      <label>Strike Price ($)</label>
+      <div class="input-wrapper">
+        <input type="number" id="strike" step="0.01">
+        <btn class="btn-pick" onclick="openStrikePicker()">Pick</btn>
+      </div>
+    </div>
+
+    <div class="form-group"><label>Option Type</label><select id="oType"><option value="call">Call</option><option value="put" selected>Put</option></select></div>
+    <div class="form-group"><label>Risk-Free Rate (10Y %)</label><input type="number" id="rfRate" value="4.25" step="0.01"></div>
+    <div class="form-group"><label>Dividend Yield (%)</label><input type="number" id="divYield" value="0.00" step="0.01"></div>
+    <div class="form-group"><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01"></div>
+    
+    <div class="form-group full-width">
+        <label>Implied Volatility (%)</label>
+        <input type="text" id="ivInput" placeholder="Calculated on Pick">
+    </div>
+
+    <btn class="btn-run full-width" onclick="runAnalysis()">Run Full Analysis</btn>
   </div>
 
-  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options calculator</h1>
-
-  <form id="optionForm" class="grid-form">
-    <div class="ticket-row">
-      <div style="flex: 1;"><label>Ticker Symbol</label><input type="text" id="symbol" placeholder="e.g. NVDA" oninput="cachedChain=null" /></div>
-      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Price</button>
+  <div id="resultsArea">
+    <div class="summary-cards">
+      <div class="card"><span class="card-label">Prob. of Profit</span><span class="card-value" id="resPop">--</span></div>
+      <div class="card"><span class="card-label">Total Cost</span><span class="card-value" id="resCost">--</span></div>
+      <div class="card"><span class="card-label">Max Profit</span><span class="card-value" id="resMaxP">--</span></div>
+      <div class="card"><span class="card-label">Max Loss</span><span class="card-value" id="resMaxL">--</span></div>
+      <div class="card"><span class="card-label">Breakeven</span><span class="card-value" id="resBE">--</span></div>
     </div>
-    <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
-    <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" /></div>
-    <div><label>Expiration Date</label><div style="display: flex; gap: 8px;"><input type="text" id="expiry" readonly /><button type="button" class="picker-btn" onclick="showExpirationPicker()">Pick</button></div></div>
-    <div><label>Strike Price ($)</label><div style="display: flex; gap: 8px;"><input type="number" id="strike" step="0.01" /><button type="button" class="picker-btn" onclick="showStrikePicker()">Pick</button></div></div>
-    <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
-    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
-    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
-    <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" value="0.00" /></div>
-    <div style="grid-column: span 2;"><label>Implied Volatility (%)</label><input type="text" id="iv" placeholder="Calculated on Pick" /></div>
-    <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
-  </form>
 
-  <div id="results"> 
-    <div class="summary-grid">
-      <div class="summary-item"><label>Prob. of Profit</label><div id="pop" style="font-weight:bold;">--</div></div>
-      <div class="summary-item"><label>Total Cost</label><div id="resCost" style="font-weight:bold;">--</div></div>
-      <div class="summary-item"><label>Max Profit</label><div id="resProfit" style="font-weight:bold;">--</div></div>
-      <div class="summary-item"><label>Max Loss</label><div id="resLoss" style="font-weight:bold;">--</div></div>
-      <div class="summary-item"><label>Breakeven</label><div id="resBreak" style="font-weight:bold;">--</div></div>
+    <div class="chart-container">
+        <canvas id="payoffChart"></canvas>
     </div>
-    <div style="height: 450px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);"><canvas id="payoffChart"></canvas></div>
-    <div class="greeks-grid">
-      <div class="greek-card"><div class="greek-label">DELTA <span class="q-mark" onclick="alert('Delta: Sensitivity to stock price move.')">?</span></div><span id="d">--</span></div>
-      <div class="greek-card"><div class="greek-label">GAMMA <span class="q-mark" onclick="alert('Gamma: Rate of change in Delta.')">?</span></div><span id="g">--</span></div>
-      <div class="greek-card"><div class="greek-label">THETA <span class="q-mark" onclick="alert('Theta: Daily time decay.')">?</span></div><span id="t">--</span></div>
-      <div class="greek-card"><div class="greek-label">VEGA <span class="q-mark" onclick="alert('Vega: Sensitivity to volatility.')">?</span></div><span id="v">--</span></div>
-      <div class="greek-card"><div class="greek-label">RHO <span class="q-mark" onclick="alert('Rho: Sensitivity to interest rates.')">?</span></div><span id="r">--</span></div>
+
+    <div class="greeks-cards">
+      <div class="greek-item">
+        <div class="greek-title">DELTA <span class="help-tip" onclick="alert('Delta: Measures the change in option price for a $1 change in the underlying stock price.')">?</span></div>
+        <span class="greek-val" id="gDelta">--</span>
+      </div>
+      <div class="greek-item">
+        <div class="greek-title">GAMMA <span class="help-tip" onclick="alert('Gamma: Measures the rate of change of Delta for a $1 change in the underlying stock price.')">?</span></div>
+        <span class="greek-val" id="gGamma">--</span>
+      </div>
+      <div class="greek-item">
+        <div class="greek-title">THETA <span class="help-tip" onclick="alert('Theta: Measures the expected daily decline in the option\'s price due to the passage of time.')">?</span></div>
+        <span class="greek-val" id="gTheta">--</span>
+      </div>
+      <div class="greek-item">
+        <div class="greek-title">VEGA <span class="help-tip" onclick="alert('Vega: Measures the change in option price for a 1% change in implied volatility.')">?</span></div>
+        <span class="greek-val" id="gVega">--</span>
+      </div>
+      <div class="greek-item">
+        <div class="greek-title">RHO <span class="help-tip" onclick="alert('Rho: Measures the change in option price for a 1% change in interest rates.')">?</span></div>
+        <span class="greek-val" id="gRho">--</span>
+      </div>
     </div>
   </div>
-
-  <footer>
-    &copy; 2026 Options calculator. All rights reserved.<br>
-    Copyright (c) 2026<br>
-    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software")... (MIT License)
-  </footer>
 </div>
 
 <script>
+// API KEYS & PROXY
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
 const PROXY = "https://corsproxy.io/?";
 
-let payoffChart = null, cachedChain = null;
+// Global State
+let chartInstance = null;
+let chainCache = null;
+let currentSymbolStr = null;
 
-const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-const normCDF = (x) => {
-    const t = 1 / (1 + 0.2316419 * Math.abs(x));
-    const d = 0.3989423 * Math.exp(-x * x / 2);
-    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-    return x > 0 ? 1 - p : p;
+// --- Helper: Black-Scholes Math ---
+const N = (x) => 0.5 * (1 + erf(x / Math.sqrt(2)));
+const erf = (x) => {
+  // Approximation of the error function
+  const sign = (x >= 0) ? 1 : -1;
+  x = Math.abs(x);
+  const a1 =  0.254829592, a2 = -0.284496736, a3 =  1.421413741;
+  const a4 = -1.453152027, a5 =  1.061405429, p  =  0.3275911;
+  const t = 1.0 / (1.0 + p*x);
+  const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+  return sign*y;
 };
+const nPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 
-async function syncMacro() {
+// --- 1. Fetch Stock Price ---
+async function fetchPrice() {
+    const sym = document.getElementById('ticker').value.toUpperCase();
+    if(!sym) return alert("Please enter a ticker.");
     try {
-        const res = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX"));
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`);
         const data = await res.json();
-        const rate = data.chart.result[0].meta.regularMarketPrice;
-        document.getElementById('rf').value = rate.toFixed(2);
-        document.getElementById('tnxVal').textContent = rate.toFixed(2);
-        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX"));
-        const vixData = await vixRes.json();
-        document.getElementById('vixVal').textContent = vixData.chart.result[0].meta.regularMarketPrice.toFixed(2);
-        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
-    } catch(e) {}
-}
-syncMacro();
-
-async function fetchTicketData() {
-    const sym = document.getElementById('symbol').value.toUpperCase();
-    const q = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
-    if(q.c) document.getElementById('stockPrice').value = q.c.toFixed(2);
+        if(data.c) {
+            document.getElementById('stockPrice').value = data.c.toFixed(2);
+            if(sym !== currentSymbolStr) { chainCache = null; currentSymbolStr = sym; }
+        } else { alert("Ticker not found."); }
+    } catch(e) { alert("Error fetching price."); }
 }
 
-async function getChain() {
-    if (cachedChain) return cachedChain;
-    const sym = document.getElementById('symbol').value.toUpperCase();
-    const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&apiKey=${POLYGON_KEY}`).then(r => r.json());
-    cachedChain = res.results; return cachedChain;
+// --- 2. Option Chain Data Handling ---
+async function getOptionChain() {
+    if(chainCache) return chainCache;
+    const sym = document.getElementById('ticker').value.toUpperCase();
+    if(!sym) { alert("Enter ticker first."); return null; }
+    try {
+        const url = `https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&expired=false&limit=1000&apiKey=${POLYGON_KEY}`;
+        const res = await fetch(url).then(r => r.json());
+        if(res.results) { chainCache = res.results; return chainCache; }
+    } catch(e) { console.error(e); }
+    alert("Failed to fetch options chain."); return null;
 }
 
-async function showExpirationPicker() {
-    const data = await getChain();
-    const dates = [...new Set(data.map(c => c.expiration_date))].sort();
-    const overlay = createOverlay("Select Expiry");
-    dates.forEach(d => {
-        const btn = document.createElement('button'); btn.className = "ov-btn"; btn.textContent = d;
-        btn.onclick = () => { document.getElementById('expiry').value = d; overlay.remove(); };
-        overlay.firstChild.appendChild(btn);
+// --- 3. Pickers (Expiry & Strike) ---
+function createModal(title, contentFn) {
+    const overlay = document.createElement('div'); overlay.className = 'picker-overlay';
+    const box = document.createElement('div'); box.className = 'picker-box';
+    box.innerHTML = `<h3>${title}</h3><div id="modalList">Loading...</div>`;
+    overlay.appendChild(box); document.body.appendChild(overlay);
+    overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+    contentFn(box.querySelector('#modalList'), overlay);
+}
+
+async function openExpiryPicker() {
+    createModal("Select Expiration", async (listContainer, overlay) => {
+        const chain = await getOptionChain();
+        if(!chain) { overlay.remove(); return; }
+        const dates = [...new Set(chain.map(c => c.expiration_date))].sort();
+        listContainer.innerHTML = '';
+        dates.forEach(date => {
+            const btn = document.createElement('button'); btn.className = 'pick-option-btn'; btn.textContent = date;
+            btn.onclick = () => {
+                document.getElementById('expiry').value = date;
+                // Update Days Left Span
+                const diff = Math.ceil((new Date(date) - new Date()) / (1000*60*60*24));
+                document.getElementById('daysLeft').textContent = `(${diff} Days Left)`;
+                // Clear strike if date changes
+                document.getElementById('strike').value = '';
+                overlay.remove();
+            };
+            listContainer.appendChild(btn);
+        });
     });
 }
 
-async function showStrikePicker() {
-    const expiry = document.getElementById('expiry').value;
-    const type = document.getElementById('type').value;
-    const data = await getChain();
-    const overlay = createOverlay("Select Strike");
-    data.filter(c => c.expiration_date === expiry && c.contract_type === type).forEach(opt => {
-        const btn = document.createElement('button'); btn.className = "ov-btn";
-        btn.textContent = `$${opt.strike_price} (IV: ${(opt.implied_volatility * 100 || 40).toFixed(2)}%)`;
-        btn.onclick = () => {
-            document.getElementById('strike').value = opt.strike_price;
-            document.getElementById('iv').value = (opt.implied_volatility * 100).toFixed(2);
-            overlay.remove();
-        };
-        overlay.firstChild.appendChild(btn);
+async function openStrikePicker() {
+    const expDate = document.getElementById('expiry').value;
+    const oType = document.getElementById('oType').value;
+    if(!expDate) return alert("Pick expiration date first.");
+
+    createModal(`Select ${oType.toUpperCase()} Strike`, async (listContainer, overlay) => {
+        const chain = await getOptionChain();
+        if(!chain) { overlay.remove(); return; }
+        const filtered = chain.filter(c => c.expiration_date === expDate && c.contract_type === oType)
+                              .sort((a,b) => a.strike_price - b.strike_price);
+        listContainer.innerHTML = '';
+        if(filtered.length === 0) listContainer.innerHTML = "No strikes found.";
+        filtered.forEach(opt => {
+            const btn = document.createElement('button'); btn.className = 'pick-option-btn';
+            const ivDisp = opt.implied_volatility ? (opt.implied_volatility*100).toFixed(2)+'%' : 'N/A';
+            btn.textContent = `$${opt.strike_price} (IV: ${ivDisp})`;
+            btn.onclick = () => {
+                document.getElementById('strike').value = opt.strike_price;
+                // === REQUIREMENT: IV INJECTION ===
+                if(opt.implied_volatility) {
+                    document.getElementById('ivInput').value = (opt.implied_volatility*100).toFixed(2);
+                }
+                overlay.remove();
+            };
+            listContainer.appendChild(btn);
+        });
     });
 }
 
-function createOverlay(title) {
-    const div = document.createElement('div'); div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center;";
-    const box = document.createElement('div'); box.style.cssText = "background:#1a1a1a; padding:20px; border-radius:12px; width:320px; max-height:70vh; overflow-y:auto; border: 1px solid #333;";
-    box.innerHTML = `<h3 style="color:#007bff;">${title}</h3>`; div.appendChild(box); document.body.appendChild(div);
-    div.onclick = (e) => { if(e.target === div) div.remove(); }; return div;
-}
-
+// --- 4. Analysis Execution ---
 function runAnalysis() {
+    // Inputs
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
-    const prem = parseFloat(document.getElementById('premium').value);
-    const r = parseFloat(document.getElementById('rf').value) / 100;
-    const ivVal = parseFloat(document.getElementById('iv').value) / 100;
-    const type = document.getElementById('type').value;
-    const qty = parseInt(document.getElementById('qty').value);
-    const expParts = document.getElementById('expiry').value.split('-');
-    const T = Math.max(0.01, (new Date(expParts[0], expParts[1]-1, expParts[2]) - new Date()) / (1000*60*60*24*365));
+    const qty = parseInt(document.getElementById('qty').value) || 1;
+    const expStr = document.getElementById('expiry').value;
+    const type = document.getElementById('oType').value;
+    const r = (parseFloat(document.getElementById('rfRate').value) || 4.25) / 100;
+    const prem = parseFloat(document.getElementById('premium').value) || 0;
+    let iv = parseFloat(document.getElementById('ivInput').value);
 
+    if(!S || !K || !expStr || isNaN(iv)) return alert("Missing required price/date/IV data.");
+    iv = iv / 100;
+
+    // Time Calculation
+    const T = Math.max(0.001, (new Date(expStr) - new Date()) / (1000*60*60*24*365.25));
+
+    // Derived values
+    const cost = prem * 100 * qty;
     const be = type === 'call' ? K + prem : K - prem;
-    const d1 = (Math.log(S/K) + (r + 0.5 * ivVal**2) * T) / (ivVal * Math.sqrt(T));
-    const d2 = d1 - (ivVal * Math.sqrt(T));
 
-    document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
-    document.getElementById('g').textContent = (normPDF(d1) / (S * ivVal * Math.sqrt(T))).toFixed(4);
-    document.getElementById('t').textContent = (-(S * normPDF(d1) * ivVal / (2 * Math.sqrt(T)) / 365)).toFixed(3);
-    document.getElementById('v').textContent = (S * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
-    document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
+    // BSM Calculations
+    const d1 = (Math.log(S/K) + (r + 0.5*iv*iv)*T) / (iv*Math.sqrt(T));
+    const d2 = d1 - iv*Math.sqrt(T);
+    let delta, gamma, theta, vega, rho, pop;
 
-    document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
-    document.getElementById('resBreak').textContent = "$" + be.toFixed(2);
-    document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
-    document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
-    document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
+    if(type === 'call') {
+        delta = N(d1);
+        pop = N(d2);
+        rho = K*T*Math.exp(-r*T)*N(d2);
+    } else {
+        delta = N(d1) - 1;
+        pop = N(-d2);
+        rho = -K*T*Math.exp(-r*T)*N(-d2);
+    }
+    gamma = nPDF(d1) / (S * iv * Math.sqrt(T));
+    vega = S * Math.sqrt(T) * nPDF(d1) / 100; // Scaled for 1% IV change
+    theta = (-(S*nPDF(d1)*iv)/(2*Math.sqrt(T)) - r*K*Math.exp(-r*T)*N(type==='call'?d2:-d2)) / 365;
+    rho = rho / 100; // Scaled for 1% rate change
 
-    document.getElementById('results').style.display = 'block';
-    drawChart(S, K, type, prem, qty, be);
+    // Update UI
+    document.getElementById('resultsArea').style.display = 'block';
+    // Summary
+    document.getElementById('resPop').innerText = (pop*100).toFixed(1) + '%';
+    document.getElementById('resCost').innerText = '$' + Math.round(cost);
+    document.getElementById('resMaxP').innerText = type === 'call' ? 'Unlimited' : '$' + Math.round((K-prem)*100*qty);
+    document.getElementById('resMaxL').innerText = '$' + Math.round(cost);
+    document.getElementById('resBE').innerText = be.toFixed(2);
+
+    // Greeks
+    document.getElementById('gDelta').innerText = delta.toFixed(3);
+    document.getElementById('gGamma').innerText = gamma.toFixed(4);
+    document.getElementById('gTheta').innerText = theta.toFixed(3);
+    document.getElementById('gVega').innerText = vega.toFixed(3);
+    document.getElementById('gRho').innerText = rho.toFixed(3);
+
+    // Render Chart
+    renderChart(S, K, T, r, iv, type, prem, qty, be);
 }
 
-function drawChart(S, K, type, prem, qty, be) {
-    const ctx = document.getElementById('payoffChart').getContext('2d');
-    const labels = [], expData = [];
-    const minVal = Math.min(S, be) * 0.9;
-    const maxVal = Math.max(S, be) * 1.1;
+// --- 5. Charting ---
+function BSM_Price(S, K, T, r, iv, type) {
+    const d1 = (Math.log(S/K) + (r + 0.5*iv*iv)*T) / (iv*Math.sqrt(T));
+    const d2 = d1 - iv*Math.sqrt(T);
+    if(type === 'call') return S*N(d1) - K*Math.exp(-r*T)*N(d2);
+    else return K*Math.exp(-r*T)*N(-d2) - S*N(-d1);
+}
 
-    for (let p = minVal; p <= maxVal; p += (maxVal - minVal)/100) {
+function renderChart(S, K, T, r, iv, type, prem, qty, be) {
+    const ctx = document.getElementById('payoffChart').getContext('2d');
+    
+    // Determine X-axis range
+    const center = S;
+    const range = Math.max(S*0.2, Math.abs(S-K)*1.5, Math.abs(S-be)*1.5);
+    const start = Math.max(0.1, center - range);
+    const end = center + range;
+    const step = (end - start) / 60;
+
+    const labels = [];
+    const dataExpiry = [];
+    const dataToday = [];
+
+    for(let p = start; p <= end; p += step) {
         labels.push(p.toFixed(2));
-        let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
-        expData.push((intrinsic - prem) * 100 * qty);
+        // Expiry Payoff
+        let intrinsic = type === 'call' ? Math.max(0, p-K) : Math.max(0, K-p);
+        dataExpiry.push((intrinsic - prem) * 100 * qty);
+        // Today's Theoretical Payoff (T+0)
+        let theo = BSM_Price(p, K, T, r, iv, type);
+        dataToday.push((theo - prem) * 100 * qty);
     }
 
-    if (payoffChart) payoffChart.destroy();
-    payoffChart = new Chart(ctx, {
+    // Find indices for annotations
+    const findCloseIdx = (val) => {
+        let closest = 0, minDiff = Infinity;
+        for(let i=0; i<labels.length; i++) {
+            let diff = Math.abs(parseFloat(labels[i]) - val);
+            if(diff < minDiff) { minDiff = diff; closest = i; }
+        }
+        return closest;
+    };
+    const idxS = findCloseIdx(S);
+    const idxBE = findCloseIdx(be);
+
+    // === REQUIREMENT: ANTI-OVERLAP LABELS ===
+    // Call: Price shifted down (+y), Breakeven shifted up (-y)
+    // Put: Price shifted up (-y), Breakeven shifted down (+y)
+    const priceYOff = type === 'call' ? 30 : -30;
+    const beYOff = type === 'call' ? -30 : 30;
+
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius:0 }] },
-        options: { 
-            responsive:true, maintainAspectRatio:false,
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'At Expiry', data: dataExpiry,
+                    borderColor: '#007bff', backgroundColor: 'rgba(0, 123, 255, 0.15)',
+                    borderWidth: 3, pointRadius: 0, fill: true
+                },
+                {
+                    label: 'Today (T+0)', data: dataToday,
+                    borderColor: '#ffffff', borderDash: [6, 6],
+                    borderWidth: 2, pointRadius: 0, fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
+                y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } }
+            },
             plugins: {
+                legend: { labels: { color: '#fff' } },
                 annotation: {
                     annotations: {
-                        currPrice: { 
-                            type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), 
-                            borderColor: '#ffcc00', borderWidth: 2, 
-                            label: { 
-                                display: true, content: 'Price: $' + S, position: (type === 'call' ? 'end' : 'start'), 
-                                backgroundColor: '#ffcc00', color: '#000', 
-                                yAdjust: (type === 'call' ? 25 : -25) // ANTI-OVERLAP OFFSET
-                            } 
+                        priceLine: {
+                            type: 'line', xMin: idxS, xMax: idxS,
+                            borderColor: '#ffc107', borderWidth: 2,
+                            label: {
+                                display: true, content: `Current Price: $${S.toFixed(2)}`,
+                                backgroundColor: '#ffc107', color: 'black', position: 'center',
+                                yAdjust: priceYOff // Applied offset
+                            }
                         },
-                        breakeven: { 
-                            type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), 
-                            borderColor: '#ff4d4d', borderDash: [2, 2],
-                            label: { 
-                                display: true, content: 'BE: $' + be.toFixed(2), position: (type === 'call' ? 'start' : 'end'),
-                                backgroundColor: '#ff4d4d', color: '#fff', 
-                                yAdjust: (type === 'call' ? -25 : 25) // ANTI-OVERLAP OFFSET
-                            } 
+                        beLine: {
+                            type: 'line', xMin: idxBE, xMax: idxBE,
+                            borderColor: '#dc3545', borderWidth: 2, borderDash: [4,4],
+                            label: {
+                                display: true, content: `Breakeven: $${be.toFixed(2)}`,
+                                backgroundColor: '#dc3545', color: 'white', position: 'center',
+                                yAdjust: beYOff // Applied offset
+                            }
                         }
                     }
                 }
@@ -263,7 +456,15 @@ function drawChart(S, K, type, prem, qty, be) {
         }
     });
 }
-function findIdx(arr, val) { return arr.indexOf(arr.reduce((a,b) => Math.abs(b-val) < Math.abs(a-val) ? b : a)); }
+// Init Risk-Free rate fetch on load
+async function fetchRiskFree() {
+    try {
+     const res = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX"));
+     const data = await res.json();
+     document.getElementById('rfRate').value = data.chart.result[0].meta.regularMarketPrice.toFixed(2);
+    } catch(e) {}
+}
+fetchRiskFree();
 </script>
 </body>
 </html>
