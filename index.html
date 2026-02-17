@@ -139,7 +139,7 @@
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
-const PROXY = "https://api.allorigins.win/raw?url=";
+const PROXY = "https://corsproxy.io/?";
 
 let payoffChart = null;
 let cachedChain = null;
@@ -207,7 +207,7 @@ function updateClock() {
 
 async function fetchVIX() {
     const vixDisplay = document.getElementById('vixVal');
-    const yahooUrl = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX";
+    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=^VIX`;
     try {
         const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
         const data = await response.json();
@@ -215,19 +215,16 @@ async function fetchVIX() {
         if (result && result.regularMarketPrice) {
             vixDisplay.textContent = result.regularMarketPrice.toFixed(2);
             vixDisplay.style.color = "#a282e8";
-        } else {
-            vixDisplay.textContent = "N/A";
         }
     } catch (err) {
-        console.error("VIX fetch failed:", err);
-        vixDisplay.textContent = "N/A";
+        console.error("Yahoo VIX fetch failed:", err);
     }
 }
 
 async function fetchTNX() {
     const tnxDisplay = document.getElementById('tnxVal');
     const rfInput = document.getElementById('rf');
-    const yahooUrl = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ETNX";
+    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=^TNX`;
     try {
         const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
         const data = await response.json();
@@ -237,25 +234,19 @@ async function fetchTNX() {
             tnxDisplay.textContent = value;
             rfInput.value = value;
             tnxDisplay.style.color = "#28a745";
-        } else {
-            tnxDisplay.textContent = "N/A";
-            rfInput.value = "4.00";
         }
     } catch (err) {
-        console.error("TNX fetch failed:", err);
-        tnxDisplay.textContent = "4.00";
-        rfInput.value = "4.00";
+        console.error("Yahoo TNX fetch failed:", err);
     }
 }
 
-// Timers – VIX every 1 second, TNX daily
 updateClock();
 fetchVIX();
 fetchTNX();
 
 setInterval(updateClock, 1000);
-setInterval(fetchVIX, 1000);
-setInterval(fetchTNX, 24 * 60 * 60 * 1000);
+setInterval(fetchVIX, 15000); 
+setInterval(fetchTNX, 86400000);
 
 function showGreekHelp(text) {
   alert(text);
@@ -330,12 +321,10 @@ async function showStrikePicker() {
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
-        
         let finalPrice = opt.marketMid;
         if (finalPrice <= 0 && opt.iv) {
             finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
         }
-
         const btn = document.createElement('button');
         btn.className = "picker-btn";
         btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
