@@ -171,39 +171,43 @@ function checkPremiumWarn() {
     }
 }
 
-// OPTIMIZED 1S REFRESH LOGIC: Staggered fetching to avoid API collisions
-let macroToggle = true; 
-async function syncMacro() {
-    const sym = macroToggle ? "^VIX" : "^TNX";
-    const url = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`;
-    
-    try {
-        let res;
-        try {
-            res = await fetch(url);
-            if (!res.ok) throw new Error();
-        } catch(e) {
-            res = await fetch(PROXY + encodeURIComponent(url));
-        }
-        const data = await res.json();
-        
-        if (data.c) {
-            if (macroToggle) {
-                document.getElementById('vixVal').textContent = data.c.toFixed(2);
-            } else {
-                document.getElementById('rf').value = data.c.toFixed(2);
-                document.getElementById('tnxVal').textContent = data.c.toFixed(2);
-            }
-            document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
-        }
-    } catch (e) { 
-        console.warn("Macro cycle failed");
-    }
-    macroToggle = !macroToggle; // Alternate between VIX and TNX every second
+// FIX: SEPARATE CLOCK AND PRICE LOGIC
+function updateClock() {
+    document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
-syncMacro(); 
-setInterval(syncMacro, 1000);
+async function fetchMacroData() {
+    const symbols = ["^VIX", "^TNX"];
+    for (const sym of symbols) {
+        const url = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`;
+        try {
+            let res;
+            try {
+                res = await fetch(url);
+                if (!res.ok) throw new Error();
+            } catch(e) {
+                res = await fetch(PROXY + encodeURIComponent(url));
+            }
+            const data = await res.json();
+            if (data.c) {
+                if (sym === "^VIX") {
+                    document.getElementById('vixVal').textContent = data.c.toFixed(2);
+                } else {
+                    document.getElementById('rf').value = data.c.toFixed(2);
+                    document.getElementById('tnxVal').textContent = data.c.toFixed(2);
+                }
+            }
+        } catch (e) { 
+            console.warn(`Macro fetch failed for ${sym}`);
+        }
+    }
+}
+
+// Start timers
+updateClock();
+fetchMacroData();
+setInterval(updateClock, 1000); // Clock refreshes every 1 second
+setInterval(fetchMacroData, 10000); // Prices refresh every 10 seconds
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
