@@ -171,26 +171,42 @@ function checkPremiumWarn() {
     }
 }
 
-// FIXED VIX PRICE LOGIC HERE
+// 1-SECOND REFRESH LOGIC
 async function syncMacro() {
+    const fetchSymbol = async (sym) => {
+        const url = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`;
+        try {
+            let res = await fetch(url);
+            if (!res.ok) throw new Error();
+            return await res.json();
+        } catch (e) {
+            let res = await fetch(PROXY + encodeURIComponent(url));
+            return await res.json();
+        }
+    };
+
     try {
-        // Use Finnhub direct API to avoid Proxy/Yahoo CORS issues
-        const tnxRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=^TNX&token=${FINNHUB_KEY}`);
-        const tnxData = await tnxRes.json();
+        const [tnxData, vixData] = await Promise.all([
+            fetchSymbol("^TNX"),
+            fetchSymbol("^VIX")
+        ]);
+
         if(tnxData.c) {
             document.getElementById('rf').value = tnxData.c.toFixed(2);
             document.getElementById('tnxVal').textContent = tnxData.c.toFixed(2);
         }
-        
-        const vixRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=^VIX&token=${FINNHUB_KEY}`);
-        const vixData = await vixRes.json();
         if(vixData.c) {
             document.getElementById('vixVal').textContent = vixData.c.toFixed(2);
             document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
         }
-    } catch (e) { console.warn("Macro sync failed", e); }
+    } catch (e) { 
+        console.warn("Macro sync failed");
+    }
 }
-syncMacro(); setInterval(syncMacro, 60000);
+
+// Initial run and then every 1 second
+syncMacro(); 
+setInterval(syncMacro, 1000);
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
