@@ -54,7 +54,7 @@
 <div class="container">
   <div class="vix-banner">
     <div>
-      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Finnhub)</div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Yahoo Finance)</div>
       <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
     </div>
     <div style="text-align: right;">
@@ -139,11 +139,11 @@
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
+const PROXY = "https://api.allorigins.win/raw?url=";
 
 let payoffChart = null;
 let cachedChain = null;
 
-// Black-Scholes Math Constants
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
     const t = 1 / (1 + 0.2316419 * Math.abs(x));
@@ -151,38 +151,6 @@ const normCDF = (x) => {
     let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
     return x > 0 ? 1 - p : p;
 };
-
-// --- CORE LOGIC ---
-
-async function fetchMacroData() {
-    const vixDisplay = document.getElementById('vixVal');
-    const tnxDisplay = document.getElementById('tnxVal');
-    const rfInput = document.getElementById('rf');
-
-    try {
-        // Fetch VIX (encoded as %5EVIX)
-        const vixRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=%5EVIX&token=${FINNHUB_KEY}`);
-        const vixData = await vixRes.json();
-        if (vixData.c) {
-            vixDisplay.textContent = vixData.c.toFixed(2);
-            vixDisplay.style.color = "#a282e8";
-        }
-
-        // Fetch 10Y Treasury TNX (encoded as %5ETNX)
-        const tnxRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=%5ETNX&token=${FINNHUB_KEY}`);
-        const tnxData = await tnxRes.json();
-        if (tnxData.c) {
-            const val = tnxData.c.toFixed(3);
-            tnxDisplay.textContent = val;
-            tnxDisplay.style.color = "#28a745";
-            if (parseFloat(rfInput.value) === 0) rfInput.value = val;
-        }
-        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
-    } catch (err) {
-        console.error("Macro fetch failed:", err);
-        document.getElementById('vixTime').textContent = "Sync Error - Retrying...";
-    }
-}
 
 function blackScholes(S, K, T, r, sigma, type) {
     if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
@@ -231,6 +199,66 @@ function checkPremiumWarn() {
         input.style.borderColor = '#ccc';
     }
     updateIV();
+}
+
+function updateClock() {
+    document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+}
+
+async function fetchVIX() {
+    const vixDisplay = document.getElementById('vixVal');
+    const yahooUrl = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX";
+    try {
+        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
+        const data = await response.json();
+        const result = data.quoteResponse.result[0];
+        if (result && result.regularMarketPrice) {
+            vixDisplay.textContent = result.regularMarketPrice.toFixed(2);
+            vixDisplay.style.color = "#a282e8";
+        } else {
+            vixDisplay.textContent = "N/A";
+        }
+    } catch (err) {
+        console.error("VIX fetch failed:", err);
+        vixDisplay.textContent = "N/A";
+    }
+}
+
+async function fetchTNX() {
+    const tnxDisplay = document.getElementById('tnxVal');
+    const rfInput = document.getElementById('rf');
+    const yahooUrl = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ETNX";
+    try {
+        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
+        const data = await response.json();
+        const result = data.quoteResponse.result[0];
+        if (result && result.regularMarketPrice) {
+            const value = result.regularMarketPrice.toFixed(3);
+            tnxDisplay.textContent = value;
+            rfInput.value = value;
+            tnxDisplay.style.color = "#28a745";
+        } else {
+            tnxDisplay.textContent = "N/A";
+            rfInput.value = "4.00";
+        }
+    } catch (err) {
+        console.error("TNX fetch failed:", err);
+        tnxDisplay.textContent = "4.00";
+        rfInput.value = "4.00";
+    }
+}
+
+// Timers – VIX every 1 second, TNX daily
+updateClock();
+fetchVIX();
+fetchTNX();
+
+setInterval(updateClock, 1000);
+setInterval(fetchVIX, 1000);
+setInterval(fetchTNX, 24 * 60 * 60 * 1000);
+
+function showGreekHelp(text) {
+  alert(text);
 }
 
 async function fetchTicketData() {
@@ -302,10 +330,12 @@ async function showStrikePicker() {
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
+        
         let finalPrice = opt.marketMid;
         if (finalPrice <= 0 && opt.iv) {
             finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
         }
+
         const btn = document.createElement('button');
         btn.className = "picker-btn";
         btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
@@ -335,7 +365,10 @@ function createOverlay(title) {
 
 function runAnalysis() {
     const prem = parseFloat(document.getElementById('premium').value);
-    if (prem <= 0) { alert("Please enter a valid premium price."); return; }
+    if (prem <= 0) {
+      alert("Please enter a valid premium price.");
+      return;
+    }
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
     const r = parseFloat(document.getElementById('rf').value) / 100;
@@ -402,19 +435,11 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
         }
     });
 }
-
 function findIdx(arr, target) {
     let closest = arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
     return arr.indexOf(closest);
 }
-
 function clearCache() { cachedChain = null; }
-function showGreekHelp(text) { alert(text); }
-
-// Start Macro Fetching
-fetchMacroData();
-setInterval(fetchMacroData, 60000); 
-
 </script>
 </body>
 </html>
