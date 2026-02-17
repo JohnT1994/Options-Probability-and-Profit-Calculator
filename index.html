@@ -144,6 +144,49 @@ function blackScholes(S, K, T, r, sigma, type) {
     const d2 = d1 - sigma * Math.sqrt(T);
     return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
 }
+
+// NEW: Implied Volatility solver (bisection method) - uses only the existing Black-Scholes
+function calculateImpliedVolatility(S, K, T, r, marketPrice, type) {
+    if (marketPrice <= 0 || T <= 0) return 0;
+    let low = 0.0001;
+    let high = 10;
+    for (let i = 0; i < 200; i++) {
+        const mid = (low + high) / 2;
+        const bsPrice = blackScholes(S, K, T, r, mid, type);
+        if (Math.abs(bsPrice - marketPrice) < 0.0001) return mid;
+        if (bsPrice < marketPrice) low = mid;
+        else high = mid;
+    }
+    return (low + high) / 2;
+}
+
+// NEW: Auto-solve IV when strike + expiry + premium are all provided
+function autoCalculateIV() {
+    const Sstr = document.getElementById('stockPrice').value;
+    const Kstr = document.getElementById('strike').value;
+    const premStr = document.getElementById('premium').value;
+    const expiryStr = document.getElementById('expiry').value;
+    if (!Sstr || !Kstr || !premStr || !expiryStr) return;
+
+    const S = parseFloat(Sstr);
+    const K = parseFloat(Kstr);
+    const prem = parseFloat(premStr);
+    const r = parseFloat(document.getElementById('rf').value) / 100 || 0;
+    const type = document.getElementById('type').value;
+
+    const [day, month, year] = expiryStr.split('/').map(Number);
+    const expDate = new Date(year, month - 1, day);
+    let T = (expDate - new Date()) / (1000 * 60 * 60 * 24 * 365);
+    T = Math.max(0.001, T);
+
+    if (T <= 0.001 || isNaN(S) || isNaN(K) || isNaN(prem)) return;
+
+    const iv = calculateImpliedVolatility(S, K, T, r, prem, type);
+    if (iv > 0) {
+        document.getElementById('iv').value = (iv * 100).toFixed(2);
+    }
+}
+
 function checkPremiumWarn() {
     const p = parseFloat(document.getElementById('premium').value);
     const warn = document.getElementById('premWarning');
@@ -156,6 +199,19 @@ function checkPremiumWarn() {
         input.style.borderColor = '#ccc';
     }
 }
+
+// UPDATED: Live clock every second + "Data from Yahoo Finance"
+function updateLiveClock() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        second: '2-digit', 
+        hour12: true 
+    });
+    document.getElementById('vixTime').innerHTML = `Data from Yahoo Finance • Live Sync: ${timeStr}`;
+}
+
 async function syncMacro() {
     try {
         const res = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX"));
@@ -167,10 +223,13 @@ async function syncMacro() {
         const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX"));
         const vixData = await vixRes.json();
         document.getElementById('vixVal').textContent = vixData.chart.result[0].meta.regularMarketPrice.toFixed(2);
-        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+        // REMOVED the old vixTime line - now handled by live clock
     } catch (e) { console.warn("Macro sync failed"); }
 }
-syncMacro(); setInterval(syncMacro, 60000);
+
+syncMacro(); 
+setInterval(syncMacro, 60000);
+
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
     if(!sym) return;
@@ -180,6 +239,7 @@ async function fetchTicketData() {
     if(p.logo) { document.getElementById('stockLogo').src = p.logo; document.getElementById('stockLogo').style.display = 'block'; }
     document.getElementById('companyName').textContent = p.name || "";
 }
+
 async function getChain() {
     const sym = document.getElementById('symbol').value.toUpperCase();
     if (cachedChain && cachedChain.symbol === sym) return cachedChain.data;
@@ -200,12 +260,14 @@ async function getChain() {
     cachedChain = { symbol: sym, data: organized };
     return organized;
 }
+
 function updateDTE(expiryStr) {
     const [d, m, y] = expiryStr.split('/');
     const expDate = new Date(y, m - 1, d);
     const diff = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
     document.getElementById('dteLabel').textContent = diff >= 0 ? `(${diff} Days Left)` : "(Expired)";
 }
+
 async function showExpirationPicker() {
     const chain = await getChain();
     const overlay = createOverlay("Select Expiry");
@@ -218,10 +280,12 @@ async function showExpirationPicker() {
             document.getElementById('expiry').value = btn.textContent;
             updateDTE(btn.textContent);
             overlay.remove();
+            autoCalculateIV();   // NEW: auto IV after expiry selected
         };
         overlay.firstChild.appendChild(btn);
     });
 }
+
 async function showStrikePicker() {
     const expiry = document.getElementById('expiry').value;
     if (!expiry) return alert("Select expiry first");
@@ -249,10 +313,12 @@ async function showStrikePicker() {
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
             checkPremiumWarn();
             overlay.remove();
+            autoCalculateIV();   // NEW: auto IV after strike/premium selected
         };
         overlay.firstChild.appendChild(btn);
     });
 }
+
 function createOverlay(title) {
     const div = document.createElement('div');
     div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center;";
@@ -264,6 +330,7 @@ function createOverlay(title) {
     div.onclick = (e) => { if (e.target === div) div.remove(); };
     return div;
 }
+
 function runAnalysis() {
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
@@ -290,6 +357,7 @@ function runAnalysis() {
     document.getElementById('results').style.display = 'block';
     drawChart(S, K, type, prem, qty, iv, T, r, be);
 }
+
 function drawChart(S, K, type, prem, qty, iv, T, r, be) {
     const ctx = document.getElementById('payoffChart').getContext('2d');
     const labels = [], expData = [], nowData = [];
@@ -327,11 +395,22 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
         }
     });
 }
+
 function findIdx(arr, target) {
     let closest = arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
     return arr.indexOf(closest);
 }
+
 function clearCache() { cachedChain = null; }
+
+// NEW: Live clock + auto IV listeners
+setInterval(updateLiveClock, 1000);
+updateLiveClock(); // initial
+
+// Auto IV on manual input (strike/premium) and after picker changes
+document.getElementById('strike').addEventListener('input', autoCalculateIV);
+document.getElementById('premium').addEventListener('input', autoCalculateIV);
+document.getElementById('expiry').addEventListener('change', autoCalculateIV);
 </script>
 </body>
 </html>
