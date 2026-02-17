@@ -175,68 +175,89 @@ function updateClock() {
     document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
-// Robust VIX Fetch
+// ────────────────────────────────────────────────
+//  CHANGED: Yahoo Finance scraping for VIX
+// ────────────────────────────────────────────────
 async function fetchVIX() {
-    const url = `https://finnhub.io/api/v1/quote?symbol=^VIX&token=${FINNHUB_KEY}&t=${Date.now()}`;
     const vixDisplay = document.getElementById('vixVal');
-    
+    vixDisplay.textContent = "…";
+
+    const yahooUrl = "https://finance.yahoo.com/quote/%5EVIX";
+    const proxyUrl = PROXY + encodeURIComponent(yahooUrl);
+
     try {
-        let response = await fetch(url);
-        if (!response.ok) throw new Error("Primary fetch failed");
-        const data = await response.json();
-        if (data.c) vixDisplay.textContent = data.c.toFixed(2);
-    } catch (e) {
-        console.warn("VIX primary failed, trying proxy...");
-        try {
-            const proxyUrl = PROXY + encodeURIComponent(url);
-            let res = await fetch(proxyUrl);
-            const data = await res.json();
-            if (data.c) vixDisplay.textContent = data.c.toFixed(2);
-        } catch (err) {
-            vixDisplay.textContent = "Error";
-            console.error("VIX fetch failed completely");
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("proxy http error");
+
+        const html = await response.text();
+
+        // Try to find the price in common Yahoo patterns (Feb 2026 structure)
+        let match = html.match(/"regularMarketPrice":\s*\{[^}]*"raw":\s*([0-9.]+)/) ||
+                    html.match(/data-testid="qsp-price"[^>]*>([\d,.]+)/) ||
+                    html.match(/"currentPrice":\s*([0-9.]+)/) ||
+                    html.match(/<fin-streamer[^>]*data-symbol="\\^VIX"[^>]*>([\d.]+)/);
+
+        if (match && match[1]) {
+            const price = parseFloat(match[1].replace(/,/g, '')).toFixed(2);
+            vixDisplay.textContent = price;
+        } else {
+            vixDisplay.textContent = "N/A";
+            console.warn("Could not extract VIX price from Yahoo HTML");
         }
+    } catch (err) {
+        console.error("VIX fetch failed:", err);
+        vixDisplay.textContent = "Error";
     }
 }
 
-// Robust TNX Fetch
+// ────────────────────────────────────────────────
+//  CHANGED: Yahoo Finance scraping for TNX (10Y yield)
+// ────────────────────────────────────────────────
 async function fetchTNX() {
-    const url = `https://finnhub.io/api/v1/quote?symbol=^TNX&token=${FINNHUB_KEY}&t=${Date.now()}`;
     const tnxDisplay = document.getElementById('tnxVal');
     const rfInput = document.getElementById('rf');
+    tnxDisplay.textContent = "…";
+
+    const yahooUrl = "https://finance.yahoo.com/quote/%5ETNX";
+    const proxyUrl = PROXY + encodeURIComponent(yahooUrl);
 
     try {
-        let response = await fetch(url);
-        if (!response.ok) throw new Error("Primary fetch failed");
-        const data = await response.json();
-        if (data.c) {
-            tnxDisplay.textContent = data.c.toFixed(2);
-            rfInput.value = data.c.toFixed(2);
-        }
-    } catch (e) {
-        console.warn("TNX primary failed, trying proxy...");
-        try {
-            const proxyUrl = PROXY + encodeURIComponent(url);
-            let res = await fetch(proxyUrl);
-            const data = await res.json();
-            if (data.c) {
-                tnxDisplay.textContent = data.c.toFixed(2);
-                rfInput.value = data.c.toFixed(2);
-            }
-        } catch (err) {
-            tnxDisplay.textContent = "4.00"; 
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("proxy http error");
+
+        const html = await response.text();
+
+        let match = html.match(/"regularMarketPrice":\s*\{[^}]*"raw":\s*([0-9.]+)/) ||
+                    html.match(/data-testid="qsp-price"[^>]*>([\d,.]+)/) ||
+                    html.match(/"currentPrice":\s*([0-9.]+)/) ||
+                    html.match(/<fin-streamer[^>]*data-symbol="\\^TNX"[^>]*>([\d.]+)/);
+
+        if (match && match[1]) {
+            const value = parseFloat(match[1].replace(/,/g, '')).toFixed(3);
+            tnxDisplay.textContent = value;
+            rfInput.value = value;   // update risk-free rate field
+        } else {
+            tnxDisplay.textContent = "N/A";
             rfInput.value = "4.00";
+            console.warn("Could not extract TNX yield from Yahoo HTML");
         }
+    } catch (err) {
+        console.error("TNX fetch failed:", err);
+        tnxDisplay.textContent = "4.00";
+        rfInput.value = "4.00";
     }
 }
 
-// Timers Initialization
+// ────────────────────────────────────────────────
+//  CHANGED: Timers – VIX every 1 second, TNX daily
+// ────────────────────────────────────────────────
 updateClock();
 fetchVIX();
 fetchTNX();
-setInterval(updateClock, 1000); 
-setInterval(fetchVIX, 15000); // 15s interval to save API quota
-setInterval(fetchTNX, 15000);
+
+setInterval(updateClock, 1000);
+setInterval(fetchVIX, 1000);           // every second as requested
+setInterval(fetchTNX, 24 * 60 * 60 * 1000);  // once per day
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
