@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Analysis Station | VIX & TNX</title>
+  <title>Options Analysis Station | Full Metrics</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
@@ -39,8 +39,9 @@
     .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
     .picker-btn { display:block; width:100%; margin:5px 0; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; cursor:pointer; text-align:left; }
     #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    .summary-item.iv-highlight { border-left-color: #ffd700; background: rgba(255, 215, 0, 0.05); }
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
     .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
@@ -101,10 +102,10 @@
     <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
     <div>
         <label>Premium (Market Price)</label>
-        <input type="number" id="premium" step="0.01" value="0.00" style="border: 2px solid #ccc;" oninput="checkPremiumWarn()"/>
-        <div id="premWarning" class="warning-box">⚠️ Market price not found. Please enter manually.</div>
+        <input type="number" id="premium" step="0.01" value="0.00" oninput="checkPremiumWarn()"/>
+        <div id="premWarning" class="warning-box">⚠️ Market price missing. Please verify manually.</div>
     </div>
-    <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
+    <div><label>Implied Volatility (%)</label><input type="number" id="iv" placeholder="Calculated on Pick" /></div>
 
     <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
   </form>
@@ -112,6 +113,7 @@
   <div id="results"> 
     <div class="summary-grid">
       <div class="summary-item"><label>Prob. of Profit</label><span id="pop">--</span></div>
+      <div class="summary-item iv-highlight"><label>Implied Vol (IV)</label><span id="resIV">--</span></div>
       <div class="summary-item"><label>Total Cost</label><span id="resCost">--</span></div>
       <div class="summary-item"><label>Max Profit</label><span id="resProfit">--</span></div>
       <div class="summary-item"><label>Max Loss</label><span id="resLoss">--</span></div>
@@ -121,17 +123,17 @@
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
-      <div class="greek-card" title="The Speedometer: The amount the option price is expected to move based on a $1 change in the underlying stock."><span class="greek-name">DELTA</span><span id="d" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Accelerator: The rate that delta will change based on a $1 change in the stock price."><span class="greek-name">GAMMA</span><span id="g" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Time Decay: The amount the option price will decrease each day as the option approaches expiration."><span class="greek-name">THETA</span><span id="t" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Fear Gauge: The amount the option price is expected to change based on a 1% change in implied volatility."><span class="greek-name">VEGA</span><span id="v" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Interest Rate Tracker: The amount the option price is expected to change based on a 1% change in interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val">--</span></div>
+      <div class="greek-card" title="Delta: Speedometer."><span class="greek-name">DELTA</span><span id="d" class="greek-val">--</span></div>
+      <div class="greek-card" title="Gamma: Accelerator."><span class="greek-name">GAMMA</span><span id="g" class="greek-val">--</span></div>
+      <div class="greek-card" title="Theta: Time Decay."><span class="greek-name">THETA</span><span id="t" class="greek-val">--</span></div>
+      <div class="greek-card" title="Vega: Fear Gauge."><span class="greek-name">VEGA</span><span id="v" class="greek-val">--</span></div>
+      <div class="greek-card" title="Rho: Interest Sensitivity."><span class="greek-name">RHO</span><span id="r" class="greek-val">--</span></div>
     </div>
   </div>
 
   <footer>
     &copy; 2026 Options Analysis Station. All rights reserved.<br>
-    Licensed under the MIT License. Data provided for educational purposes only.
+    Licensed under the MIT License.
   </footer>
 </div>
 
@@ -162,13 +164,8 @@ function checkPremiumWarn() {
     const p = parseFloat(document.getElementById('premium').value);
     const warn = document.getElementById('premWarning');
     const input = document.getElementById('premium');
-    if (p <= 0) {
-        warn.style.display = 'block';
-        input.style.borderColor = '#ff4d4d';
-    } else {
-        warn.style.display = 'none';
-        input.style.borderColor = '#ccc';
-    }
+    if (p <= 0) { warn.style.display = 'block'; input.style.borderColor = '#ff4d4d'; } 
+    else { warn.style.display = 'none'; input.style.borderColor = '#ccc'; }
 }
 
 async function syncMacro() {
@@ -204,14 +201,9 @@ async function getChain() {
     const organized = {};
     res.results.forEach(c => {
         if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
-        let price = 0;
-        if(c.last_quote) {
-            price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
-        }
+        let price = (c.last_quote?.bid && c.last_quote?.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote?.last || 0);
         organized[c.expiration_date][c.contract_type + 's'].push({
-            strike: c.strike_price,
-            marketMid: price,
-            iv: c.implied_volatility || null
+            strike: c.strike_price, marketMid: price, iv: c.implied_volatility || null
         });
     });
     cachedChain = { symbol: sym, data: organized };
@@ -233,11 +225,7 @@ async function showExpirationPicker() {
         const [y, m, d] = date.split('-');
         btn.className = "picker-btn";
         btn.textContent = `${d}/${m}/${y}`;
-        btn.onclick = () => { 
-            document.getElementById('expiry').value = btn.textContent; 
-            updateDTE(btn.textContent);
-            overlay.remove(); 
-        };
+        btn.onclick = () => { document.getElementById('expiry').value = btn.textContent; updateDTE(btn.textContent); overlay.remove(); };
         overlay.firstChild.appendChild(btn);
     });
 }
@@ -256,21 +244,17 @@ async function showStrikePicker() {
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
-        
-        let finalPrice = opt.marketMid;
-        if (finalPrice <= 0 && opt.iv) {
-            finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
-        }
-
+        let finalPrice = opt.marketMid || (opt.iv ? blackScholes(S, opt.strike, T, r, opt.iv, type) : 0);
         const btn = document.createElement('button');
         btn.className = "picker-btn";
-        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
+        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}`;
         btn.onclick = () => { 
             document.getElementById('strike').value = opt.strike;
             document.getElementById('premium').value = finalPrice.toFixed(2);
-            if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
-            checkPremiumWarn();
-            overlay.remove(); 
+            if (opt.iv) {
+                document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
+            }
+            checkPremiumWarn(); overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
     });
@@ -297,18 +281,19 @@ function runAnalysis() {
     const qty = parseInt(document.getElementById('qty').value);
     const [day, month, year] = document.getElementById('expiry').value.split('/').map(Number);
     const T = Math.max(0.001, (new Date(year, month - 1, day) - new Date()) / (1000 * 60 * 60 * 24 * 365));
-    let iv = parseFloat(document.getElementById('iv').value) / 100 || 0.5;
+    let ivVal = parseFloat(document.getElementById('iv').value);
+    let iv = ivVal / 100 || 0.4;
 
     const d1 = (Math.log(S/K) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
     const d2 = d1 - (iv * Math.sqrt(T));
     const be = type === 'call' ? K + prem : K - prem;
 
     document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
+    document.getElementById('resIV').textContent = ivVal ? ivVal.toFixed(2) + "%" : "40.00% (Est)";
     document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
     document.getElementById('resBreak').textContent = be.toFixed(2);
     document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
     document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
-
     document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
     document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
     document.getElementById('t').textContent = (-(S * normPDF(d1) * iv / (2 * Math.sqrt(T)) / 365)).toFixed(3);
@@ -340,11 +325,7 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
             responsive:true, maintainAspectRatio:false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { labels: { color: '#fff' } },
-                tooltip: {
-                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${parseFloat(ctx.raw).toFixed(2)}` },
-                    backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#4db8ff', bodyColor: '#fff', borderColor: '#4db8ff', borderWidth: 1
-                },
+                tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#4db8ff', bodyColor: '#fff' },
                 annotation: {
                     annotations: {
                         currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000' } },
