@@ -12,35 +12,55 @@
       --glass: rgba(0, 0, 0, 0.9); 
     }
     body { 
-      font-family: 'Segoe UI', sans-serif; background-color: #000;
+      font-family: 'Segoe UI', sans-serif; background-image: url('https://i.imgur.com/nVWumk7.png'); 
+      background-size: cover; background-position: center; background-attachment: fixed;
       color: #ffffff; max-width: 950px; margin: 2rem auto; padding: 0 1rem; 
     }
     .container { 
-      background: #000; padding: 2.5rem; border-radius: 20px; 
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--glass); backdrop-filter: blur(15px); padding: 2.5rem; border-radius: 20px; 
+      border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 50px rgba(0,0,0,0.8);
     }
+    .vix-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      background: linear-gradient(90deg, rgba(111, 66, 193, 0.1), rgba(0, 123, 255, 0.1));
+      padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .vix-val { font-size: 1.5rem; font-weight: bold; color: #a282e8; }
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
     .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end !important; grid-column: span 2; }
-    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #fff; }
+    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
     input, select { 
       width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; 
       background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
     }
-    .btn-fetch { background: var(--success); color: white; padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .picker-btn { background:#444; color:white; border:none; border-radius:4px; padding: 5px 15px; cursor:pointer; }
-    .ov-btn { display:block; width:100%; margin:5px 0; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; cursor:pointer; text-align:left; }
-    #results { margin-top: 2.5rem; display: none; }
+    button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-fetch { background: var(--success); color: white; }
+    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
+    .picker-btn { background:#444; color:white; padding: 10px; border-radius: 6px; cursor: pointer; }
+    .ov-btn { display:block; width:100%; margin:5px 0; padding:12px; background:#333; color:white; border:1px solid #555; border-radius:6px; cursor:pointer; text-align:left; }
+    #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
     .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; margin-top: 20px; }
-    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem; border-radius: 10px; text-align: center; }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+    footer { margin-top: 3rem; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1 style="text-align:center; margin-bottom: 2rem;">Options Analysis Station</h1>
+  <div class="vix-banner">
+    <div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Live)</div>
+      <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 0.65rem; color: #888;">VIX: <span id="vixVal" class="vix-val">--</span></div>
+      <div style="font-size: 0.65rem; color: #888;">10Y Treasury: <span id="tnxVal" style="color:#28a745; font-weight:bold;">--</span>%</div>
+    </div>
+  </div>
+
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Analysis Station</h1>
 
   <form id="optionForm" class="grid-form">
     <div class="ticket-row">
@@ -56,16 +76,22 @@
     
     <div>
         <label>Expiration Date</label>
-        <div style="display: flex; gap: 5px;"><input type="text" id="expiry" readonly /><button type="button" class="picker-btn" onclick="showExpirationPicker()">Pick</button></div>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="expiry" placeholder="dd/mm/yyyy" readonly />
+            <button type="button" class="picker-btn" onclick="showExpirationPicker()">Pick</button>
+        </div>
     </div>
     <div>
         <label>Strike Price ($)</label>
-        <div style="display: flex; gap: 5px;"><input type="number" id="strike" step="0.01" /><button type="button" class="picker-btn" onclick="showStrikePicker()">Pick</button></div>
+        <div style="display: flex; gap: 8px;">
+            <input type="number" id="strike" step="0.01" />
+            <button type="button" class="picker-btn" onclick="showStrikePicker()">Pick</button>
+        </div>
     </div>
 
     <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
     <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
-    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" /></div>
+    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
     <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" value="0.00" /></div>
     
     <div style="grid-column: span 2;">
@@ -78,29 +104,61 @@
 
   <div id="results"> 
     <div class="summary-grid">
-      <div class="summary-item"><label>Prob. of Profit</label><div id="pop">--</div></div>
-      <div class="summary-item"><label>Total Cost</label><div id="resCost">--</div></div>
-      <div class="summary-item"><label>Max Profit</label><div id="resProfit">--</div></div>
-      <div class="summary-item"><label>Max Loss</label><div id="resLoss">--</div></div>
-      <div class="summary-item"><label>Breakeven</label><div id="resBreak">--</div></div>
+      <div class="summary-item"><label>Prob. of Profit</label><div id="pop" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Total Cost</label><div id="resCost" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Max Profit</label><div id="resProfit" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Max Loss</label><div id="resLoss" style="font-weight:bold;">--</div></div>
+      <div class="summary-item"><label>Breakeven</label><div id="resBreak" style="font-weight:bold;">--</div></div>
     </div>
-    <div style="height: 450px; background: #000; border: 1px solid #333; padding: 10px;">
+    <div style="height: 450px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid">
-      <div class="greek-card"><div>DELTA</div><span id="d">--</span></div>
-      <div class="greek-card"><div>GAMMA</div><span id="g">--</span></div>
-      <div class="greek-card"><div>THETA</div><span id="t">--</span></div>
-      <div class="greek-card"><div>VEGA</div><span id="v">--</span></div>
-      <div class="greek-card"><div>RHO</div><span id="r">--</span></div>
+      <div class="greek-card"><div style="font-size:0.7rem; color:#4db8ff; font-weight: bold;">DELTA</div><span id="d">--</span></div>
+      <div class="greek-card"><div style="font-size:0.7rem; color:#4db8ff; font-weight: bold;">GAMMA</div><span id="g">--</span></div>
+      <div class="greek-card"><div style="font-size:0.7rem; color:#4db8ff; font-weight: bold;">THETA</div><span id="t">--</span></div>
+      <div class="greek-card"><div style="font-size:0.7rem; color:#4db8ff; font-weight: bold;">VEGA</div><span id="v">--</span></div>
+      <div class="greek-card"><div style="font-size:0.7rem; color:#4db8ff; font-weight: bold;">RHO</div><span id="r">--</span></div>
     </div>
   </div>
+
+  <footer>
+    &copy; 2026 Options Analysis Station. All rights reserved.<br>
+    Copyright (c) 2026<br>
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software... (MIT License)
+  </footer>
 </div>
 
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
+const PROXY = "https://corsproxy.io/?";
+
 let payoffChart = null, cachedChain = null;
+
+// Black-Scholes Math for Greeks
+const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+const normCDF = (x) => {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return x > 0 ? 1 - p : p;
+};
+
+async function syncMacro() {
+    try {
+        const res = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX"));
+        const data = await res.json();
+        const rate = data.chart.result[0].meta.regularMarketPrice;
+        document.getElementById('rf').value = rate.toFixed(2);
+        document.getElementById('tnxVal').textContent = rate.toFixed(2);
+        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX"));
+        const vixData = await vixRes.json();
+        document.getElementById('vixVal').textContent = vixData.chart.result[0].meta.regularMarketPrice.toFixed(2);
+        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+    } catch(e) {}
+}
+syncMacro();
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
@@ -137,7 +195,6 @@ async function showStrikePicker() {
         btn.textContent = `$${opt.strike_price} (IV: ${(opt.implied_volatility * 100 || 40).toFixed(2)}%)`;
         btn.onclick = () => {
             document.getElementById('strike').value = opt.strike_price;
-            // FIX 1: POPULATE THE SPECIFIED BOX
             document.getElementById('iv').value = (opt.implied_volatility * 100 || 40.00).toFixed(2);
             overlay.remove();
         };
@@ -146,9 +203,10 @@ async function showStrikePicker() {
 }
 
 function createOverlay(title) {
-    const div = document.createElement('div'); div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:100; display:flex; align-items:center; justify-content:center;";
-    const box = document.createElement('div'); box.style.cssText = "background:#222; padding:20px; border-radius:12px; width:300px; max-height:70vh; overflow:y-auto;";
-    box.innerHTML = `<h3>${title}</h3>`; div.appendChild(box); document.body.appendChild(div);
+    const div = document.createElement('div'); div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center;";
+    const box = document.createElement('div'); box.style.cssText = "background:#1a1a1a; padding:20px; border-radius:12px; width:320px; max-height:70vh; overflow-y:auto; border: 1px solid #333;";
+    box.innerHTML = `<h3 style="color:#007bff;">${title}</h3>`; div.appendChild(box); document.body.appendChild(div);
+    div.onclick = (e) => { if(e.target === div) div.remove(); };
     return div;
 }
 
@@ -156,52 +214,72 @@ function runAnalysis() {
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
     const prem = parseFloat(document.getElementById('premium').value);
+    const r = parseFloat(document.getElementById('rf').value) / 100;
+    const ivVal = parseFloat(document.getElementById('iv').value) / 100;
     const type = document.getElementById('type').value;
     const qty = parseInt(document.getElementById('qty').value);
+    
+    // Time to Expiry Calculation
+    const expParts = document.getElementById('expiry').value.split('-');
+    const T = Math.max(0.01, (new Date(expParts[0], expParts[1]-1, expParts[2]) - new Date()) / (1000*60*60*24*365));
+
     const be = type === 'call' ? K + prem : K - prem;
 
-    document.getElementById('resBreak').textContent = be.toFixed(2);
-    document.getElementById('resCost').textContent = "$" + (prem * 100 * qty);
+    // Greek Calculations
+    const d1 = (Math.log(S/K) + (r + 0.5 * ivVal**2) * T) / (ivVal * Math.sqrt(T));
+    const d2 = d1 - (ivVal * Math.sqrt(T));
+
+    document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
+    document.getElementById('g').textContent = (normPDF(d1) / (S * ivVal * Math.sqrt(T))).toFixed(4);
+    document.getElementById('t').textContent = (-(S * normPDF(d1) * ivVal / (2 * Math.sqrt(T)) / 365)).toFixed(3);
+    document.getElementById('v').textContent = (S * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
+    document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
+
+    document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
+    document.getElementById('resBreak').textContent = "$" + be.toFixed(2);
+    document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
+    document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
+    document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
+
     document.getElementById('results').style.display = 'block';
-    
     drawChart(S, K, type, prem, qty, be);
 }
 
 function drawChart(S, K, type, prem, qty, be) {
     const ctx = document.getElementById('payoffChart').getContext('2d');
     const labels = [], expData = [];
-    const range = S * 0.2;
-    for (let p = S - range; p <= S + range; p += (range*2)/100) {
+    const minVal = Math.min(S, be) * 0.9;
+    const maxVal = Math.max(S, be) * 1.1;
+
+    for (let p = minVal; p <= maxVal; p += (maxVal - minVal)/100) {
         labels.push(p.toFixed(2));
-        let profit = type === 'call' ? Math.max(0, p - K) - prem : Math.max(0, K - p) - prem;
-        expData.push(profit * 100 * qty);
+        let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
+        expData.push((intrinsic - prem) * 100 * qty);
     }
 
     if (payoffChart) payoffChart.destroy();
     payoffChart = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, pointRadius:0 }] },
+        data: { labels, datasets: [{ label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius:0 }] },
         options: { 
             responsive:true, maintainAspectRatio:false,
             plugins: {
                 annotation: {
                     annotations: {
                         currPrice: { 
-                            type: 'line', xMin: labels.indexOf(labels.reduce((a,b) => Math.abs(b-S) < Math.abs(a-S) ? b : a)), 
-                            xMax: labels.indexOf(labels.reduce((a,b) => Math.abs(b-S) < Math.abs(a-S) ? b : a)),
+                            type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), 
                             borderColor: '#ffcc00', borderWidth: 2, 
                             label: { 
-                                display: true, content: 'Price', backgroundColor: '#ffcc00', color: '#000',
-                                yAdjust: (type === 'call' ? 25 : -25) // FIX 2: Offset from BE
+                                display: true, content: 'Price: $' + S, position: (type === 'call' ? 'end' : 'start'), 
+                                backgroundColor: '#ffcc00', color: '#000', yAdjust: (type === 'call' ? 25 : -25)
                             } 
                         },
                         breakeven: { 
-                            type: 'line', xMin: labels.indexOf(labels.reduce((a,b) => Math.abs(b-be) < Math.abs(a-be) ? b : a)),
-                            xMax: labels.indexOf(labels.reduce((a,b) => Math.abs(b-be) < Math.abs(a-be) ? b : a)),
+                            type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), 
                             borderColor: '#ff4d4d', borderDash: [2, 2],
                             label: { 
-                                display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff',
-                                yAdjust: (type === 'call' ? -25 : 25) // FIX 2: Offset from Price
+                                display: true, content: 'BE: $' + be.toFixed(2), position: (type === 'call' ? 'start' : 'end'),
+                                backgroundColor: '#ff4d4d', color: '#fff', yAdjust: (type === 'call' ? -25 : 25)
                             } 
                         }
                     }
@@ -210,6 +288,7 @@ function drawChart(S, K, type, prem, qty, be) {
         }
     });
 }
+function findIdx(arr, val) { return arr.indexOf(arr.reduce((a,b) => Math.abs(b-val) < Math.abs(a-val) ? b : a)); }
 </script>
 </body>
 </html>
