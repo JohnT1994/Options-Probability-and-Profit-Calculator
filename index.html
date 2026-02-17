@@ -62,7 +62,7 @@
     .chart-container { background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); height: 450px; position: relative; }
     
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
-    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
     .greek-val { font-size: 1rem; font-weight: 700; color: #fff; }
 
@@ -118,7 +118,7 @@
     <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
     <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
     <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
-    <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" placeholder="Auto-fills on Pick" /></div>
+    <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" value="0.00" /></div>
     <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
 
     <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
@@ -158,11 +158,22 @@ const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
 let payoffChart = null;
 let cachedChain = null;
 
-function clearCache() { 
-    cachedChain = null; 
-    document.getElementById('companyName').textContent = '';
-    document.getElementById('stockLogo').style.display = 'none';
+// Normal Dist functions for fallback calculation
+const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+const normCDF = (x) => {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+    return x > 0 ? 1 - p : p;
+};
+function blackScholes(S, K, T, r, sigma, type) {
+    if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
+    const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+    const d2 = d1 - sigma * Math.sqrt(T);
+    return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
 }
+
+function clearCache() { cachedChain = null; document.getElementById('companyName').textContent = ''; document.getElementById('stockLogo').style.display = 'none'; }
 
 async function refreshVIX() {
     const proxy = "https://corsproxy.io/?";
@@ -194,9 +205,11 @@ async function getChain() {
     const organized = {};
     res.results.forEach(c => {
         if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
+        // Aggressive fallback for mid-price
+        let price = (c.last_quote?.bid && c.last_quote?.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote?.last || 0);
         organized[c.expiration_date][c.contract_type + 's'].push({
             strike: c.strike_price,
-            mid: (c.last_quote?.bid + c.last_quote?.ask) / 2 || c.last_quote?.last || 0,
+            mid: price,
             iv: c.implied_volatility || null
         });
     });
@@ -223,18 +236,29 @@ async function showStrikePicker() {
     const [d, m, y] = expiry.split('/');
     const targetDate = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
     const chain = await getChain();
-    const type = document.getElementById('type').value + 's';
+    const type = document.getElementById('type').value;
+    const contracts = chain[targetDate][type + 's'];
     const overlay = createOverlay("Select Strike");
-    const currentS = parseFloat(document.getElementById('stockPrice').value) || 0;
-    
-    chain[targetDate][type].sort((a,b) => a.strike - b.strike).forEach(opt => {
-        if (Math.abs(opt.strike - currentS) > currentS * 0.4) return;
+    const S = parseFloat(document.getElementById('stockPrice').value) || 0;
+    const r = parseFloat(document.getElementById('rf').value) / 100;
+    const T = Math.max(0.001, (new Date(y, m - 1, d) - new Date()) / (1000 * 60 * 60 * 24 * 365));
+
+    contracts.sort((a,b) => a.strike - b.strike).forEach(opt => {
+        if (Math.abs(opt.strike - S) > S * 0.4) return;
+        
+        // If mid is 0, estimate fair value for the UI button
+        let displayPrice = opt.mid;
+        if (displayPrice === 0 && opt.iv) {
+            displayPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
+        }
+
         const btn = document.createElement('button');
         btn.className = "picker-btn";
-        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Mid: $${opt.mid.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
+        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${displayPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
+        
         btn.onclick = () => { 
             document.getElementById('strike').value = opt.strike;
-            document.getElementById('premium').value = opt.mid.toFixed(2);
+            document.getElementById('premium').value = displayPrice.toFixed(2);
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
             overlay.remove(); 
         };
@@ -254,21 +278,6 @@ function createOverlay(title) {
     return div;
 }
 
-const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-const normCDF = (x) => {
-    const t = 1 / (1 + 0.2316419 * Math.abs(x));
-    const d = 0.3989423 * Math.exp(-x * x / 2);
-    let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-    return x > 0 ? 1 - p : p;
-};
-
-function blackScholes(S, K, T, r, sigma, type) {
-    if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
-    const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
-    const d2 = d1 - sigma * Math.sqrt(T);
-    return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
-}
-
 function runAnalysis() {
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
@@ -280,14 +289,6 @@ function runAnalysis() {
     const T = Math.max(0.001, (new Date(year, month - 1, day) - new Date()) / (1000 * 60 * 60 * 24 * 365));
 
     let v = parseFloat(document.getElementById('iv').value) / 100 || 0.5;
-    if (!document.getElementById('iv').value) {
-        for (let i = 0; i < 60; i++) {
-            let diff = prem - blackScholes(S, K, T, r, v, type);
-            if (Math.abs(diff) < 0.0001) break;
-            let d1 = (Math.log(S/K) + (r + 0.5 * v * v) * T) / (v * Math.sqrt(T));
-            v += diff / (S * Math.sqrt(T) * normPDF(d1));
-        }
-    }
     const iv = Math.abs(v);
     document.getElementById('iv').value = (iv * 100).toFixed(2);
 
@@ -329,7 +330,6 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
         nowData.push((blackScholes(p, K, T, r, iv, type) - prem) * 100 * qty);
     }
     if (payoffChart) payoffChart.destroy();
-    
     payoffChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -362,7 +362,6 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
         }
     });
 }
-
 function findIdx(arr, target) {
     let closest = arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
     return arr.indexOf(closest);
