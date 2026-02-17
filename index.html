@@ -3,138 +3,267 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Analysis Station</title>
+  <title>Options Probability and Profit Calculator | VIX</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
-    :root { --primary: #007bff; --success: #28a745; --glass: rgba(0, 0, 0, 0.9); }
-    body { font-family: 'Segoe UI', sans-serif; background: #0b0e11; color: #fff; max-width: 950px; margin: 2rem auto; padding: 0 1rem; }
-    .container { background: var(--glass); padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 50px rgba(0,0,0,0.8); }
+    :root { 
+      --primary: #007bff; --success: #28a745; --accent: #6f42c1; --danger: #ff4d4d;
+      --glass: rgba(0, 0, 0, 0.9); 
+    }
+
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-image: url('https://i.imgur.com/nVWumk7.png'); 
+      background-size: cover; background-position: center; background-attachment: fixed;
+      color: #ffffff; max-width: 950px; margin: 2rem auto; padding: 0 1rem; 
+    }
+
+    .container { 
+      background: var(--glass); backdrop-filter: blur(15px);
+      padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 50px rgba(0,0,0,0.8);
+    }
+
+    .vix-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      background: linear-gradient(90deg, rgba(111, 66, 193, 0.2), rgba(0, 123, 255, 0.2));
+      padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .vix-val { font-size: 1.5rem; font-weight: bold; color: #a282e8; }
+    .vix-meta { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
-    .full-width { grid-column: span 2; }
-    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #888; }
-    input, select { width: 100%; padding: 0.75rem; border: 1px solid #333; border-radius: 8px; background: #161a1e; color: #fff; font-size: 0.95rem; box-sizing: border-box; }
-    button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; margin-top: 10px; }
-    .picker-btn { display:block; width:100%; margin:4px 0; padding:12px; background:#222; color:white; border:1px solid #444; border-radius:6px; cursor:pointer; text-align:left; }
-    .picker-btn:hover { border-color: var(--primary); background: #2a2e33; }
-    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin: 2rem 0; }
-    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 12px; border-top: 3px solid var(--primary); text-align: center; }
-    .summary-item label { font-size: 0.6rem; text-transform: uppercase; }
-    .summary-item span { font-size: 1.1rem; font-weight: bold; display: block; }
-    .chart-container { height: 400px; background: #000; padding: 10px; border-radius: 12px; border: 1px solid #222; }
+    .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end !important; grid-column: span 2; }
+    .ticket-row div { flex: 1; }
+
+    label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
+    
+    input, select { 
+      width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; 
+      background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
+    }
+
+    button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-fetch { background: var(--success); color: white; }
+    .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
+    
+    .picker-btn { display:block; width:100%; margin:5px 0; padding:10px; background:#333; color:white; border:1px solid #555; border-radius:6px; cursor:pointer; text-align:left; }
+    .picker-btn:hover { background:#444; border-color: var(--primary); }
+
+    #results { margin-top: 2.5rem; display: none; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2rem; }
+    
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
+    .summary-item label { color: #888; text-transform: uppercase; font-size: 0.65rem; }
+    .summary-item span { font-size: 1.2rem; font-weight: bold; display: block; margin-top: 5px; }
+
+    .chart-container { background: rgba(0,0,0,0.4); padding: 1.5rem; border-radius: 15px; margin: 1.5rem 0; border: 1px solid rgba(255,255,255,0.1); height: 450px; position: relative; }
+    
+    .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
+    .greek-val { font-size: 1rem; font-weight: 700; color: #fff; }
+
+    .scenario-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: 0.85rem; }
+    .scenario-table th, td { padding: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: center; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2 style="text-align:center; margin-top:0;">Options Analysis Station</h2>
-  
-  <div class="grid-form">
-    <div class="full-width" style="display:flex; gap:10px;">
-        <div style="flex:2"><label>Symbol</label><input type="text" id="symbol" placeholder="SOFI" oninput="cachedChain=null"></div>
-        <div style="flex:1; align-self:flex-end;"><button onclick="fetchTicketData()" style="background:var(--success); color:white; width:100%;">Fetch Price</button></div>
+  <div class="vix-banner">
+    <div>
+      <div class="vix-meta">Market Volatility Index (VIX)</div>
+      <div id="vixTime" style="font-size: 0.65rem; color: #888;">Fetching live sync...</div>
     </div>
-    
-    <div><label>Stock Price</label><input type="number" id="stockPrice" step="0.01"></div>
-    <div><label>Qty</label><input type="number" id="qty" value="1"></div>
-    
-    <div><label>Expiration</label><div style="display:flex; gap:5px;"><input type="text" id="expiry" readonly><button onclick="showExpirationPicker()">Pick</button></div></div>
-    <div><label>Strike</label><div style="display:flex; gap:5px;"><input type="number" id="strike" step="0.01"><button onclick="showStrikePicker()">Pick</button></div></div>
-    
-    <div><label>Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
-    <div><label>Premium</label><input type="number" id="premium" step="0.01" style="border-color: var(--success)"></div>
+    <div class="vix-val" id="vixVal">--.--</div>
   </div>
 
-  <button class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Analysis Station</h1>
 
-  <div id="results" style="display:none;">
-    <div class="summary-grid">
-        <div class="summary-item"><label>P.O.P</label><span id="pop">--</span></div>
-        <div class="summary-item"><label>Cost</label><span id="resCost">--</span></div>
-        <div class="summary-item"><label>Max Profit</label><span id="resProfit">--</span></div>
-        <div class="summary-item"><label>Max Loss</label><span id="resLoss">--</span></div>
-        <div class="summary-item"><label>Breakeven</label><span id="resBreak">--</span></div>
+  <form id="optionForm" class="grid-form">
+    <div class="ticket-row">
+      <div style="width: 300px; flex: 0 0 auto;">
+        <label>Ticker Symbol</label>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+          <img id="stockLogo" style="width: 24px; height: 24px; display: none; border-radius: 4px;">
+          <span id="companyName" style="font-size: 0.8rem; color: #aaa;"></span>
+        </div>
+        <input type="text" id="symbol" placeholder="e.g. SOFI" oninput="clearCache()" />
+      </div>
+      <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Price</button>
     </div>
+
+    <div><label>Stock Price ($)</label><input type="number" id="stockPrice" step="0.01" /></div>
+    <div><label>Contracts (Qty)</label><input type="number" id="qty" value="1" /></div>
+    
+    <div>
+      <label>Expiration Date</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="expiry" placeholder="dd/mm/yyyy" readonly />
+        <button type="button" onclick="showExpirationPicker()" style="background:#444; color:white;">Pick</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Strike Price ($)</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="number" id="strike" step="0.01" />
+        <button type="button" onclick="showStrikePicker()" style="background:#444; color:white;">Pick</button>
+      </div>
+    </div>
+
+    <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
+    <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="4.25" /></div>
+    <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
+    <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" placeholder="Auto-fills on Pick" /></div>
+    <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
+
+    <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
+  </form>
+
+  <div id="results"> 
+    <div class="summary-grid">
+      <div class="summary-item"><label>Prob. of Profit</label><span id="pop">--</span></div>
+      <div class="summary-item"><label>Total Cost</label><span id="resCost">--</span></div>
+      <div class="summary-item"><label>Max Profit</label><span id="resProfit">--</span></div>
+      <div class="summary-item"><label>Max Loss</label><span id="resLoss">--</span></div>
+      <div class="summary-item"><label>Breakeven</label><span id="resBreak">--</span></div>
+    </div>
+
     <div class="chart-container"><canvas id="payoffChart"></canvas></div>
+
+    <div class="greeks-grid">
+      <div class="greek-card" title="The Speedometer..."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
+      <div class="greek-card" title="The Accelerator..."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
+      <div class="greek-card" title="The Time Decay..."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
+      <div class="greek-card" title="The Fear Gauge..."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
+      <div class="greek-card" title="The Interest Rate Tracker..."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
+    </div>
+
+    <h3 style="font-size: 1rem; margin-top: 2rem; color: #4db8ff;">IV Scenario Table</h3>
+    <table class="scenario-table">
+      <thead><tr><th>IV Shift</th><th>New IV Level</th><th>New Option Price</th></tr></thead>
+      <tbody id="scenarioBody"></tbody>
+    </table>
   </div>
 </div>
 
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
+
 let payoffChart = null;
 let cachedChain = null;
 
+function clearCache() { 
+    cachedChain = null; 
+    document.getElementById('companyName').textContent = '';
+    document.getElementById('stockLogo').style.display = 'none';
+}
+
+async function refreshVIX() {
+    const proxy = "https://corsproxy.io/?";
+    try {
+        const vixRes = await fetch(proxy + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX"));
+        const vixData = await vixRes.json();
+        document.getElementById('vixVal').textContent = vixData.chart.result[0].meta.regularMarketPrice.toFixed(2);
+        document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+    } catch (e) {}
+}
+refreshVIX(); setInterval(refreshVIX, 30000);
+
 async function fetchTicketData() {
-    const sym = document.getElementById('symbol').value.toUpperCase();
-    const q = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
-    if (q.c) document.getElementById('stockPrice').value = q.c.toFixed(2);
+    const sym = document.getElementById('symbol').value.trim().toUpperCase();
+    if (!sym) return;
+    try {
+        const p = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
+        document.getElementById('companyName').textContent = p.name || "";
+        if (p.logo) { document.getElementById('stockLogo').src = p.logo; document.getElementById('stockLogo').style.display = 'block'; }
+        const q = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`).then(r => r.json());
+        if (q.c) document.getElementById('stockPrice').value = q.c.toFixed(2);
+    } catch (e) {}
 }
 
 async function getChain() {
     const sym = document.getElementById('symbol').value.toUpperCase();
-    if (cachedChain?.symbol === sym) return cachedChain.data;
-    const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&limit=1000&apiKey=${POLYGON_KEY}`).then(r => r.json());
-    const data = {};
-    res.results.forEach(c => {
-        if (!data[c.expiration_date]) data[c.expiration_date] = { calls: [], puts: [] };
-        data[c.expiration_date][c.contract_type + 's'].push({ strike: c.strike_price, mid: (c.last_quote?.bid + c.last_quote?.ask)/2 || c.last_quote?.last || 0 });
+    if (cachedChain && cachedChain.symbol === sym) return cachedChain.data;
+    const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&limit=1000&apiKey=${POLYGON_KEY}`);
+    const data = await res.json();
+    const organized = {};
+    data.results.forEach(c => {
+        if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
+        organized[c.expiration_date][c.contract_type + 's'].push({
+            strike: c.strike_price,
+            mid: (c.last_quote?.bid + c.last_quote?.ask) / 2 || c.last_quote?.last || 0
+        });
     });
-    cachedChain = { symbol: sym, data };
-    return data;
+    cachedChain = { symbol: sym, data: organized };
+    return organized;
 }
 
 async function showExpirationPicker() {
     const chain = await getChain();
-    const overlay = createOverlay("Dates");
-    Object.keys(chain).sort().forEach(d => {
-        const btn = document.createElement('button'); btn.className="picker-btn";
-        const [y,m,day] = d.split('-'); btn.textContent = `${day}/${m}/${y}`;
+    const overlay = createOverlay("Select Expiry");
+    Object.keys(chain).sort().forEach(date => {
+        const btn = document.createElement('button');
+        const [y, m, d] = date.split('-');
+        btn.className = "picker-btn";
+        btn.textContent = `${d}/${m}/${y}`;
         btn.onclick = () => { document.getElementById('expiry').value = btn.textContent; overlay.remove(); };
         overlay.firstChild.appendChild(btn);
     });
 }
 
 async function showStrikePicker() {
-    const exp = document.getElementById('expiry').value;
-    if (!exp) return;
-    const [d,m,y] = exp.split('/');
+    const expiry = document.getElementById('expiry').value;
+    if (!expiry) return alert("Select expiry first");
+    const [d, m, y] = expiry.split('/');
     const chain = await getChain();
-    const list = chain[`${y}-${m}-${d}`][document.getElementById('type').value + 's'];
-    const overlay = createOverlay("Strikes");
-    list.sort((a,b)=>a.strike-b.strike).forEach(o => {
-        if (Math.abs(o.strike - parseFloat(document.getElementById('stockPrice').value)) > 20) return;
-        const btn = document.createElement('button'); btn.className="picker-btn";
-        btn.textContent = `$${o.strike} (Mid: $${o.mid.toFixed(2)})`;
+    const type = document.getElementById('type').value + 's';
+    const overlay = createOverlay("Select Strike");
+    const currentS = parseFloat(document.getElementById('stockPrice').value);
+    
+    chain[`${y}-${m}-${d}`][type].sort((a,b) => a.strike - b.strike).forEach(opt => {
+        if (Math.abs(opt.strike - currentS) > currentS * 0.4) return;
+        const btn = document.createElement('button');
+        btn.className = "picker-btn";
+        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Mid: $${opt.mid.toFixed(2)}`;
         btn.onclick = () => { 
-            document.getElementById('strike').value = o.strike; 
-            document.getElementById('premium').value = o.mid.toFixed(2);
+            document.getElementById('strike').value = opt.strike;
+            document.getElementById('premium').value = opt.mid.toFixed(2);
             overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
     });
 }
 
-function createOverlay(t) {
-    const div = document.createElement('div'); div.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99";
-    const box = document.createElement('div'); box.style.cssText="background:#1a1a1a;padding:20px;border-radius:12px;width:300px;max-height:70vh;overflow-y:auto;";
-    box.innerHTML = `<h3>${t}</h3>`; div.appendChild(box); document.body.appendChild(div);
-    div.onclick = (e) => { if(e.target===div) div.remove(); }; return div;
+function createOverlay(title) {
+    const div = document.createElement('div');
+    div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center;";
+    const box = document.createElement('div');
+    box.style.cssText = "background:#1a1a1a; padding:20px; border-radius:12px; max-height:80vh; overflow-y:auto; width:350px; border:1px solid #333;";
+    box.innerHTML = `<h3 style="margin-top:0; color:#4db8ff;">${title}</h3>`;
+    div.appendChild(box);
+    document.body.appendChild(div);
+    div.onclick = (e) => { if (e.target === div) div.remove(); };
+    return div;
 }
 
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
-    let t = 1 / (1 + 0.2316419 * Math.abs(x));
-    let d = 0.3989423 * Math.exp(-x * x / 2);
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
     let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
     return x > 0 ? 1 - p : p;
 };
 
-function blackScholes(S, K, T, r, v, type) {
+function blackScholes(S, K, T, r, sigma, type) {
     if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
-    let d1 = (Math.log(S / K) + (r + 0.5 * v * v) * T) / (v * Math.sqrt(T));
-    let d2 = d1 - v * Math.sqrt(T);
+    const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+    const d2 = d1 - sigma * Math.sqrt(T);
     return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
 }
 
@@ -142,47 +271,77 @@ function runAnalysis() {
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
     const prem = parseFloat(document.getElementById('premium').value);
+    const r = parseFloat(document.getElementById('rf').value) / 100;
     const type = document.getElementById('type').value;
-    const [d,m,y] = document.getElementById('expiry').value.split('/').map(Number);
-    const T = Math.max(0.001, (new Date(y, m-1, d) - new Date()) / (1000 * 3600 * 24 * 365));
-    const r = 0.0425;
+    const qty = parseInt(document.getElementById('qty').value);
+    const [day, month, year] = document.getElementById('expiry').value.split('/').map(Number);
+    const T = Math.max(0.001, (new Date(year, month - 1, day) - new Date()) / (1000 * 60 * 60 * 24 * 365));
 
     let v = 0.5;
-    for(let i=0; i<40; i++){
-        let diff = prem - blackScholes(S,K,T,r,v,type);
-        if(Math.abs(diff)<0.001) break;
-        let d1 = (Math.log(S/K)+(r+0.5*v*v)*T)/(v*Math.sqrt(T));
-        v += diff/(S*Math.sqrt(T)*normPDF(d1));
+    for (let i = 0; i < 60; i++) {
+        let diff = prem - blackScholes(S, K, T, r, v, type);
+        if (Math.abs(diff) < 0.0001) break;
+        let d1 = (Math.log(S/K) + (r + 0.5 * v * v) * T) / (v * Math.sqrt(T));
+        v += diff / (S * Math.sqrt(T) * normPDF(d1));
     }
+    const iv = Math.abs(v);
+    document.getElementById('iv').value = (iv * 100).toFixed(2);
 
-    const d1 = (Math.log(S/K)+(r+0.5*v*v)*T)/(v*Math.sqrt(T));
-    const d2 = d1 - v * Math.sqrt(T);
+    const d1 = (Math.log(S/K) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
+    const d2 = d1 - (iv * Math.sqrt(T));
 
-    document.getElementById('pop').textContent = (type==='call'?normCDF(d2):normCDF(-d2)*100).toFixed(1) + "%";
-    document.getElementById('resCost').textContent = "$" + (prem * 100).toFixed(0);
-    document.getElementById('resBreak').textContent = (type==='call'?K+prem:K-prem).toFixed(2);
-    document.getElementById('resProfit').textContent = type==='call'?"Unlimited":"$" + ((K-prem)*100).toFixed(0);
-    document.getElementById('resLoss').textContent = "$" + (prem*100).toFixed(0);
-    
-    document.getElementById('results').style.display='block';
-    updateChart(S,K,T,r,v,type,prem);
+    document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
+    document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
+    document.getElementById('resBreak').textContent = (type === 'call' ? K + prem : K - prem).toFixed(2);
+    document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
+    document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
+
+    document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
+    document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
+    document.getElementById('t').textContent = (-(S * normPDF(d1) * iv / (2 * Math.sqrt(T)) / 365)).toFixed(3);
+    document.getElementById('v').textContent = (S * Math.sqrt(T) * normPDF(d1) / 100).toFixed(3);
+    document.getElementById('r').textContent = ((type === 'call' ? K*T*Math.exp(-r*T)*normCDF(d2) : -K*T*Math.exp(-r*T)*normCDF(-d2))/100).toFixed(3);
+
+    const body = document.getElementById('scenarioBody'); body.innerHTML = '';
+    [-10, -5, 0, 5, 10].forEach(s => {
+        let ni = Math.max(0.01, iv + (s/100));
+        let np = blackScholes(S, K, T, r, ni, type);
+        body.innerHTML += `<tr><td>${s}%</td><td>${(ni*100).toFixed(1)}%</td><td style="color:${np > prem ? '#28a745':'#ff4d4d'}">$${np.toFixed(2)}</td></tr>`;
+    });
+
+    document.getElementById('results').style.display = 'block';
+    drawChart(S, K, type, prem, qty, iv, T, r);
 }
 
-function updateChart(S,K,T,r,v,type,prem) {
+function drawChart(S, K, type, prem, qty, iv, T, r) {
+    const ctx = document.getElementById('payoffChart').getContext('2d');
     const labels = [], expData = [], nowData = [];
-    for(let p = S*0.8; p <= S*1.2; p += (S*0.4/40)) {
+    const start = S * 0.7, end = S * 1.3;
+    for (let p = start; p <= end; p += (end - start)/50) {
         labels.push(p.toFixed(2));
-        expData.push(((type==='call'?Math.max(0, p-K):Math.max(0, K-p)) - prem)*100);
-        nowData.push((blackScholes(p,K,T,r,v,type) - prem)*100);
+        let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
+        expData.push((intrinsic - prem) * 100 * qty);
+        nowData.push((blackScholes(p, K, T, r, iv, type) - prem) * 100 * qty);
     }
-    if(payoffChart) payoffChart.destroy();
-    payoffChart = new Chart(document.getElementById('payoffChart'), {
+    if (payoffChart) payoffChart.destroy();
+    payoffChart = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [
-            { label: 'At Expiry', data: expData, borderColor: '#007bff', fill: false, pointRadius: 0 },
-            { label: 'Today (T+0)', data: nowData, borderColor: '#fff', borderDash: [5,5], fill: false, pointRadius: 0 }
-        ]},
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { color: '#222' } }, y: { grid: { color: '#222' } } } }
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0, 123, 255, 0.1)', pointRadius: 0 },
+                { label: 'Today (T+0)', data: nowData, borderColor: '#ffffff', borderDash: [5,5], fill: false, pointRadius: 0 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#fff' } } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' } },
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' } }
+            }
+        }
     });
 }
 </script>
