@@ -100,6 +100,17 @@
           </span>
         </div>
         <input type="text" id="symbol" placeholder="e.g. TSLA" oninput="clearProfileDisplay()" />
+        <div id="chainContainer" style="margin-top: 12px; display: none;">
+  <label style="font-size: 0.9rem; color: #ccc;">Select Expiration & Strike</label>
+  <div style="display: flex; gap: 12px; margin-top: 6px;">
+    <select id="expSelect" style="flex: 1; padding: 8px; border-radius: 6px;">
+      <option value="">-- Choose expiration --</option>
+    </select>
+    <select id="strikeSelect" style="flex: 1; padding: 8px; border-radius: 6px;">
+      <option value="">-- Choose strike --</option>
+    </select>
+  </div>
+</div>
       </div>
       <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Market Price</button>
     </div>
@@ -111,7 +122,10 @@
       <label>Option Type</label>
       <select id="type"><option value="call">Call</option><option value="put">Put</option></select>
     </div>
-    <div><label>Expiration Date</label><input type="date" id="expiry" required /></div>
+    <div>
+  <label>Expiration Date</label>
+  <input type="text" id="expiry" placeholder="dd/mm/yyyy" required pattern="\d{2}/\d{2}/\d{4}" />
+</div>
     <div><label>Risk-Free Rate (%)</label><input type="number" id="rf" step="0.01" value="3.42" /></div>
     <div><label>Dividend Yield (%)</label><input type="number" id="dividend" readonly placeholder="0.00" /></div>
     <div><label>Market Price (Premium)</label><input type="number" id="premium" step="0.01" /></div>
@@ -249,6 +263,104 @@ async function fetchTicketData() {
     if (msg.type === 'trade') document.getElementById('stockPrice').value = msg.data[msg.data.length - 1].p.toFixed(2);
   };
 }
+  
+  async function loadOptionChain(sym) {
+  const chainContainer = document.getElementById('chainContainer');
+  const expSelect = document.getElementById('expSelect');
+  const strikeSelect = document.getElementById('strikeSelect');
+
+  // Clear previous
+  expSelect.innerHTML = '<option value="">-- Loading... --</option>';
+  strikeSelect.innerHTML = '<option value="">-- Choose expiration first --</option>';
+  chainContainer.style.display = 'block';
+
+  try {
+    // 1. Get available expiration dates
+    const expUrl = `https://finnhub.io/api/v1/stock/option-expiration?symbol=${sym}&token=${API_KEY}`;
+    const expRes = await fetch(expUrl);
+    const expData = await expRes.json();
+
+    if (!expData.expirationDates || expData.expirationDates.length === 0) {
+      expSelect.innerHTML = '<option value="">No expirations found</option>';
+      return;
+    }
+
+    // Sort by nearest first
+    expData.expirationDates.sort();
+
+    expSelect.innerHTML = '<option value="">-- Choose expiration --</option>';
+    expData.expirationDates.forEach(date => {
+      const option = document.createElement('option');
+      option.value = date;
+      option.textContent = new Date(date).toLocaleDateString('en-GB'); // dd/mm/yyyy
+      expSelect.appendChild(option);
+    });
+
+    // 2. When user selects expiration → load strikes
+    expSelect.onchange = async () => {
+      const selectedExp = expSelect.value;
+      if (!selectedExp) {
+        strikeSelect.innerHTML = '<option value="">-- Choose expiration first --</option>';
+        return;
+      }
+
+      strikeSelect.innerHTML = '<option value="">-- Loading strikes... --</option>';
+
+      const chainUrl = `https://finnhub.io/api/v1/stock/option-chain?symbol=${sym}&expiration=${selectedExp}&token=${API_KEY}`;
+      const chainRes = await fetch(chainUrl);
+      const chainData = await chainRes.json();
+
+      if (!chainData.data || !chainData.data.calls || !chainData.data.puts) {
+        strikeSelect.innerHTML = '<option value="">No data for this expiration</option>';
+        return;
+      }
+
+      // Combine calls & puts strikes, get unique and sort
+      const allStrikes = new Set([
+        ...chainData.data.calls.map(c => c.strike),
+        ...chainData.data.puts.map(p => p.strike)
+      ]);
+
+      const sortedStrikes = [...allStrikes].sort((a,b) => a - b);
+
+      // Filter near-the-money (±15 strikes around current price)
+      const currentPrice = parseFloat(document.getElementById('stockPrice').value) || 0;
+      const minStrike = Math.max(0, currentPrice * 0.7);
+      const maxStrike = currentPrice * 1.3;
+
+      const nearStrikes = sortedStrikes.filter(s => s >= minStrike && s <= maxStrike);
+
+      strikeSelect.innerHTML = '<option value="">-- Choose strike --</option>';
+      nearStrikes.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s.toFixed(2);
+        strikeSelect.appendChild(opt);
+      });
+
+      // When strike is selected → auto-fill premium & IV
+      strikeSelect.onchange = () => {
+        const selectedStrike = parseFloat(strikeSelect.value);
+        if (!selectedStrike) return;
+
+        // Find the contract (prefer call or put depending on type)
+        const optionType = document.getElementById('type').value;
+        const contracts = optionType === 'call' ? chainData.data.calls : chainData.data.puts;
+
+        const contract = contracts.find(c => c.strike === selectedStrike);
+        if (contract) {
+          const midPrice = (contract.bid + contract.ask) / 2 || contract.lastPrice || 0;
+          document.getElementById('premium').value = midPrice.toFixed(2);
+          document.getElementById('iv').value = (contract.impliedVolatility * 100).toFixed(2);
+          document.getElementById('strike').value = selectedStrike.toFixed(2);
+        }
+      };
+    };
+  } catch (err) {
+    console.error("Chain fetch error:", err);
+    expSelect.innerHTML = '<option value="">Error loading chain</option>';
+  }
+}
 
 function runAnalysis() {
   const S = parseFloat(document.getElementById('stockPrice').value);
@@ -261,7 +373,10 @@ function runAnalysis() {
   const expiryVal = document.getElementById('expiry').value;
 
   if(!expiryVal || isNaN(S) || isNaN(K) || isNaN(prem)) return alert("Fill all fields.");
-  const T = Math.max(0.0001, (new Date(expiryVal) - new Date()) / 31557600000);
+  const [day, month, year] = expiryVal.split('/').map(Number);
+  const expiryDate = new Date(year, month - 1, day);
+  const now = new Date();
+  const T = Math.max(0.0001, (expiryDate - now) / (1000 * 60 * 60 * 24 * 365.25));
 
   let sigma = 0.5;
   for (let i = 0; i < 60; i++) {
