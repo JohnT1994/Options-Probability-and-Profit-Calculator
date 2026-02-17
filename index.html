@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Analysis Station | Live DTE & TNX</title>
+  <title>Options Analysis Station | VIX & TNX</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
@@ -33,6 +33,7 @@
       width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; 
       background: #ffffff; color: #000000; font-size: 0.95rem; box-sizing: border-box;
     }
+    .warning-box { color: var(--danger); font-size: 0.75rem; margin-top: 5px; display: none; font-weight: bold; }
     button { padding: 0.85rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
     .btn-fetch { background: var(--success); color: white; }
     .btn-calc { background: var(--primary); color: white; width: 100%; font-size: 1.1rem; grid-column: span 2; margin-top: 10px; }
@@ -44,6 +45,7 @@
     .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
     .dte-badge { font-size: 0.75rem; color: #ffd700; font-weight: bold; margin-left: 10px; }
+    footer { margin-top: 3rem; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -97,7 +99,11 @@
     <div><label>Option Type</label><select id="type"><option value="call">Call</option><option value="put">Put</option></select></div>
     <div><label>Risk-Free Rate (10Y %)</label><input type="number" id="rf" step="0.01" value="0.00" /></div>
     <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
-    <div><label>Premium (Market Price)</label><input type="number" id="premium" step="0.01" value="0.00" /></div>
+    <div>
+        <label>Premium (Market Price)</label>
+        <input type="number" id="premium" step="0.01" value="0.00" style="border: 2px solid #ccc;" oninput="checkPremiumWarn()"/>
+        <div id="premWarning" class="warning-box">⚠️ Market price not found. Please enter manually.</div>
+    </div>
     <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
 
     <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
@@ -111,7 +117,7 @@
       <div class="summary-item"><label>Max Loss</label><span id="resLoss">--</span></div>
       <div class="summary-item"><label>Breakeven</label><span id="resBreak">--</span></div>
     </div>
-    <div style="height: 400px; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 10px;">
+    <div style="height: 450px; background: rgba(0,0,0,0.4); border-radius: 15px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); position: relative;">
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
@@ -122,6 +128,11 @@
       <div class="greek-card" title="The Interest Rate Tracker: The amount the option price is expected to change based on a 1% change in interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val">--</span></div>
     </div>
   </div>
+
+  <footer>
+    &copy; 2026 Options Analysis Station. All rights reserved.<br>
+    Licensed under the MIT License. Data provided for educational purposes only.
+  </footer>
 </div>
 
 <script>
@@ -145,6 +156,19 @@ function blackScholes(S, K, T, r, sigma, type) {
     const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
     const d2 = d1 - sigma * Math.sqrt(T);
     return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
+}
+
+function checkPremiumWarn() {
+    const p = parseFloat(document.getElementById('premium').value);
+    const warn = document.getElementById('premWarning');
+    const input = document.getElementById('premium');
+    if (p <= 0) {
+        warn.style.display = 'block';
+        input.style.borderColor = '#ff4d4d';
+    } else {
+        warn.style.display = 'none';
+        input.style.borderColor = '#ccc';
+    }
 }
 
 async function syncMacro() {
@@ -180,7 +204,6 @@ async function getChain() {
     const organized = {};
     res.results.forEach(c => {
         if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
-        // Aggressive price extraction
         let price = 0;
         if(c.last_quote) {
             price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
@@ -198,8 +221,7 @@ async function getChain() {
 function updateDTE(expiryStr) {
     const [d, m, y] = expiryStr.split('/');
     const expDate = new Date(y, m - 1, d);
-    const today = new Date();
-    const diff = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+    const diff = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
     document.getElementById('dteLabel').textContent = diff >= 0 ? `(${diff} Days Left)` : "(Expired)";
 }
 
@@ -235,7 +257,6 @@ async function showStrikePicker() {
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
         
-        // FAIL-SAFE: If Polygon returns 0, calculate Black-Scholes price
         let finalPrice = opt.marketMid;
         if (finalPrice <= 0 && opt.iv) {
             finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
@@ -248,6 +269,7 @@ async function showStrikePicker() {
             document.getElementById('strike').value = opt.strike;
             document.getElementById('premium').value = finalPrice.toFixed(2);
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
+            checkPremiumWarn();
             overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
@@ -300,7 +322,8 @@ function runAnalysis() {
 function drawChart(S, K, type, prem, qty, iv, T, r, be) {
     const ctx = document.getElementById('payoffChart').getContext('2d');
     const labels = [], expData = [], nowData = [];
-    for (let p = S*0.7; p <= S*1.3; p += (S*0.6)/100) {
+    const start = S * 0.7, end = S * 1.3;
+    for (let p = start; p <= end; p += (end - start)/100) {
         labels.push(p.toFixed(2));
         let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
         expData.push((intrinsic - prem) * 100 * qty);
@@ -310,15 +333,32 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
     payoffChart = new Chart(ctx, {
         type: 'line',
         data: { labels, datasets: [
-            { label: 'Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius:0 },
-            { label: 'Today', data: nowData, borderColor: '#fff', borderDash: [5,5], pointRadius:0 }
+            { label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0,123,255,0.1)', pointRadius:0, borderWidth: 3 },
+            { label: 'Today (T+0)', data: nowData, borderColor: '#fff', borderDash: [5,5], pointRadius:0, borderWidth: 2 }
         ]},
         options: { 
-            responsive:true, 
-            maintainAspectRatio:false, 
+            responsive:true, maintainAspectRatio:false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#fff' } },
+                tooltip: {
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${parseFloat(ctx.raw).toFixed(2)}` },
+                    backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#4db8ff', bodyColor: '#fff', borderColor: '#4db8ff', borderWidth: 1
+                },
+                annotation: {
+                    annotations: {
+                        currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000' } },
+                        breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff' } }
+                    }
+                }
+            },
             scales:{ x:{grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#888'}}, y:{grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#888'}}} 
         }
     });
+}
+function findIdx(arr, target) {
+    let closest = arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
+    return arr.indexOf(closest);
 }
 function clearCache() { cachedChain = null; }
 </script>
