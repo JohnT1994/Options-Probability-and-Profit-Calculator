@@ -176,38 +176,38 @@ function updateClock() {
     document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
-async function fetchMacroData() {
-    const symbols = ["^VIX", "^TNX"];
-    for (const sym of symbols) {
-        const url = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`;
-        try {
-            let res;
-            try {
-                res = await fetch(url);
-                if (!res.ok) throw new Error();
-            } catch(e) {
-                res = await fetch(PROXY + encodeURIComponent(url));
-            }
-            const data = await res.json();
-            if (data.c) {
-                if (sym === "^VIX") {
-                    document.getElementById('vixVal').textContent = data.c.toFixed(2);
-                } else {
-                    document.getElementById('rf').value = data.c.toFixed(2);
-                    document.getElementById('tnxVal').textContent = data.c.toFixed(2);
-                }
-            }
-        } catch (e) { 
-            console.warn(`Macro fetch failed for ${sym}`);
+async function fetchVIX() {
+    const url = `https://finnhub.io/api/v1/quote?symbol=^VIX&token=${FINNHUB_KEY}`;
+    try {
+        let res = await fetch(url);
+        if (!res.ok) res = await fetch(PROXY + encodeURIComponent(url));
+        const data = await res.json();
+        if (data.c) {
+            document.getElementById('vixVal').textContent = data.c.toFixed(2);
         }
-    }
+    } catch (e) { console.warn("VIX fetch failed"); }
 }
 
-// Start timers
+async function fetchTNX() {
+    const url = `https://finnhub.io/api/v1/quote?symbol=^TNX&token=${FINNHUB_KEY}`;
+    try {
+        let res = await fetch(url);
+        if (!res.ok) res = await fetch(PROXY + encodeURIComponent(url));
+        const data = await res.json();
+        if (data.c) {
+            document.getElementById('rf').value = data.c.toFixed(2);
+            document.getElementById('tnxVal').textContent = data.c.toFixed(2);
+        }
+    } catch (e) { console.warn("TNX fetch failed"); }
+}
+
+// Start independent timers
 updateClock();
-fetchMacroData();
+fetchVIX();
+fetchTNX();
 setInterval(updateClock, 1000); // Clock refreshes every 1 second
-setInterval(fetchMacroData, 10000); // Prices refresh every 10 seconds
+setInterval(fetchVIX, 1000);   // VIX refreshes every 1 second
+setInterval(fetchTNX, 86400000); // TNX refreshes once every 24 hours
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
