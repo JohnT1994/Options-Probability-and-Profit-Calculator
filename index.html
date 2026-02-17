@@ -20,12 +20,11 @@
       background: var(--glass); backdrop-filter: blur(15px); padding: 2.5rem; border-radius: 20px;
       border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 12px 50px rgba(0,0,0,0.8);
     }
-    .vix-banner {
+    .macro-banner {
       display: flex; justify-content: space-between; align-items: center;
-      background: linear-gradient(90deg, rgba(111, 66, 193, 0.1), rgba(0, 123, 255, 0.1));
-      padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #1a1a1a; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem;
+      border: 1px solid rgba(255,255,255,0.1);
     }
-    .vix-val { font-size: 1.5rem; font-weight: bold; color: #a282e8; }
     .grid-form { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.2rem; }
     .ticket-row { display: flex; gap: 0.5rem; align-items: flex-end !important; grid-column: span 2; }
     label { display: block; margin-bottom: 0.3rem; font-weight: 600; font-size: 0.85rem; color: #bbb; }
@@ -51,16 +50,17 @@
 </head>
 <body>
 <div class="container">
-  <div class="vix-banner">
+  <div class="macro-banner">
     <div>
-      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Live)</div>
-      <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">MARKET MACRO (LIVE)</div>
+      <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Data from Yahoo Finance • Live Sync: --</div>
     </div>
-    <div style="text-align: right;">
-      <div style="font-size: 0.65rem; color: #888;">VIX: <span id="vixVal" class="vix-val">--</span></div>
-      <div style="font-size: 0.65rem; color: #888;">10Y Treasury: <span id="tnxVal" style="color:#28a745; font-weight:bold;">--</span>%</div>
+    <div style="text-align: right; display:flex; gap:20px;">
+      <div>VIX: <span id="vixVal" style="color:#a282e8; font-weight:bold; font-size:1.1rem;">--</span></div>
+      <div>10Y Treasury: <span id="tnxVal" style="color:#28a745; font-weight:bold;">--</span>%</div>
     </div>
   </div>
+
   <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Probability calculator</h1>
   <form id="optionForm" class="grid-form">
     <div class="ticket-row">
@@ -102,6 +102,7 @@
     <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
     <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
   </form>
+
   <div id="results">
     <div class="summary-grid">
       <div class="summary-item"><label>Prob. of Profit</label><span id="pop">--</span></div>
@@ -114,26 +115,11 @@
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
-      <div class="greek-card">
-        <span class="greek-name">DELTA <button class="greek-q" onclick="showGreekInfo(0)">?</button></span>
-        <span id="d" class="greek-val">--</span>
-      </div>
-      <div class="greek-card">
-        <span class="greek-name">GAMMA <button class="greek-q" onclick="showGreekInfo(1)">?</button></span>
-        <span id="g" class="greek-val">--</span>
-      </div>
-      <div class="greek-card">
-        <span class="greek-name">THETA <button class="greek-q" onclick="showGreekInfo(2)">?</button></span>
-        <span id="t" class="greek-val">--</span>
-      </div>
-      <div class="greek-card">
-        <span class="greek-name">VEGA <button class="greek-q" onclick="showGreekInfo(3)">?</button></span>
-        <span id="v" class="greek-val">--</span>
-      </div>
-      <div class="greek-card">
-        <span class="greek-name">RHO <button class="greek-q" onclick="showGreekInfo(4)">?</button></span>
-        <span id="r" class="greek-val">--</span>
-      </div>
+      <div class="greek-card"><span class="greek-name">DELTA <button class="greek-q" onclick="showGreekInfo(0)">?</button></span><span id="d" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">GAMMA <button class="greek-q" onclick="showGreekInfo(1)">?</button></span><span id="g" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">THETA <button class="greek-q" onclick="showGreekInfo(2)">?</button></span><span id="t" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">VEGA <button class="greek-q" onclick="showGreekInfo(3)">?</button></span><span id="v" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">RHO <button class="greek-q" onclick="showGreekInfo(4)">?</button></span><span id="r" class="greek-val">--</span></div>
     </div>
   </div>
   <footer>
@@ -141,10 +127,12 @@
     Licensed under the MIT License. Data provided for educational purposes only.
   </footer>
 </div>
+
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
-const PROXY = "https://corsproxy.io/?";
+const PROXY = "https://api.allorigins.win/raw?url=";
+
 let payoffChart = null;
 let cachedChain = null;
 
@@ -156,9 +144,7 @@ const greekDescriptions = [
   "The Interest Rate Tracker: The amount the option price is expected to change based on a 1% change in interest rates."
 ];
 
-function showGreekInfo(idx) {
-  alert(greekDescriptions[idx]);
-}
+function showGreekInfo(idx) { alert(greekDescriptions[idx]); }
 
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
@@ -167,6 +153,7 @@ const normCDF = (x) => {
     let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
     return x > 0 ? 1 - p : p;
 };
+
 function blackScholes(S, K, T, r, sigma, type) {
     if (T <= 0) return Math.max(0, type === 'call' ? S - K : K - S);
     const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
@@ -176,14 +163,12 @@ function blackScholes(S, K, T, r, sigma, type) {
 
 function calculateImpliedVolatility(S, K, T, r, marketPrice, type) {
     if (marketPrice <= 0 || T <= 0) return 0;
-    let low = 0.0001;
-    let high = 10;
+    let low = 0.0001, high = 10;
     for (let i = 0; i < 200; i++) {
         const mid = (low + high) / 2;
         const bsPrice = blackScholes(S, K, T, r, mid, type);
         if (Math.abs(bsPrice - marketPrice) < 0.0001) return mid;
-        if (bsPrice < marketPrice) low = mid;
-        else high = mid;
+        if (bsPrice < marketPrice) low = mid; else high = mid;
     }
     return (low + high) / 2;
 }
@@ -194,32 +179,22 @@ function autoCalculateIV() {
     const premStr = document.getElementById('premium').value;
     const expiryStr = document.getElementById('expiry').value;
     if (!Sstr || !Kstr || !premStr || !expiryStr) return;
-
-    const S = parseFloat(Sstr);
-    const K = parseFloat(Kstr);
-    const prem = parseFloat(premStr);
+    const S = parseFloat(Sstr), K = parseFloat(Kstr), prem = parseFloat(premStr);
     const r = parseFloat(document.getElementById('rf').value) / 100 || 0;
     const type = document.getElementById('type').value;
-
     const [day, month, year] = expiryStr.split('/').map(Number);
-    const expDate = new Date(year, month - 1, day);
-    let T = (expDate - new Date()) / (1000 * 60 * 60 * 24 * 365);
+    let T = (new Date(year, month-1, day) - new Date()) / (1000*60*60*24*365);
     T = Math.max(0.001, T);
-
     if (T <= 0.001 || isNaN(S) || isNaN(K) || isNaN(prem)) return;
-
     const iv = calculateImpliedVolatility(S, K, T, r, prem, type);
-    if (iv > 0) {
-        document.getElementById('iv').value = (iv * 100).toFixed(2);
-    }
+    if (iv > 0) document.getElementById('iv').value = (iv * 100).toFixed(2);
 }
 
 function checkPremiumWarn() {
     const input = document.getElementById('premium');
     const warn = document.getElementById('premWarning');
-    const pVal = input.value.trim();
-    const p = parseFloat(pVal);
-    if (!pVal || isNaN(p) || p <= 0) {
+    const p = parseFloat(input.value);
+    if (!input.value || isNaN(p) || p <= 0) {
         warn.style.display = 'block';
         input.style.borderColor = '#ff4d4d';
     } else {
@@ -230,35 +205,28 @@ function checkPremiumWarn() {
 
 function updateLiveClock() {
     const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        second: '2-digit', 
-        hour12: true 
-    });
+    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
     document.getElementById('vixTime').innerHTML = `Data from Yahoo Finance • Live Sync: ${timeStr}`;
 }
 
 async function syncMacro() {
     try {
-        // === FIXED: Use the exact same quote API Yahoo's own page uses ===
+        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX"));
+        const vixData = await vixRes.json();
+        document.getElementById('vixVal').textContent = vixData.quoteResponse.result[0].regularMarketPrice.toFixed(2);
+
         const tnxRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ETNX"));
         const tnxData = await tnxRes.json();
         const rate = tnxData.quoteResponse.result[0].regularMarketPrice;
-        document.getElementById('rf').value = rate.toFixed(2);
         document.getElementById('tnxVal').textContent = rate.toFixed(2);
-       
-        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX"));
-        const vixData = await vixRes.json();
-        const vixPrice = vixData.quoteResponse.result[0].regularMarketPrice;
-        document.getElementById('vixVal').textContent = vixPrice.toFixed(2);
-    } catch (e) { 
-        console.warn("Macro sync failed – using cached values if available");
+        document.getElementById('rf').value = rate.toFixed(2);
+    } catch (e) {
+        console.error("Macro sync failed:", e);
     }
 }
 
-syncMacro(); 
-setInterval(syncMacro, 60000);
+syncMacro();
+setInterval(syncMacro, 30000);
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
@@ -278,9 +246,7 @@ async function getChain() {
     res.results.forEach(c => {
         if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
         let price = 0;
-        if(c.last_quote) {
-            price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
-        }
+        if(c.last_quote) price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
         organized[c.expiration_date][c.contract_type + 's'].push({
             strike: c.strike_price,
             marketMid: price,
@@ -329,11 +295,8 @@ async function showStrikePicker() {
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
-       
         let finalPrice = opt.marketMid;
-        if (finalPrice <= 0 && opt.iv) {
-            finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
-        }
+        if (finalPrice <= 0 && opt.iv) finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
         const btn = document.createElement('button');
         btn.className = "picker-btn";
         btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
@@ -368,7 +331,6 @@ function runAnalysis() {
         alert("⚠️ Please input premium price");
         return;
     }
-
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
     const prem = parseFloat(premInput);
@@ -417,8 +379,7 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { labels: { color: '#fff' } },
-                tooltip: {
-                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${parseFloat(ctx.raw).toFixed(2)}` },
+                tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${parseFloat(ctx.raw).toFixed(2)}` },
                     backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#4db8ff', bodyColor: '#fff', borderColor: '#4db8ff', borderWidth: 1
                 },
                 annotation: {
