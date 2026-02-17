@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Analysis Station | VIX & TNX</title>
+  <title>Options Probability Calculator | VIX & TNX</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
@@ -62,7 +62,7 @@
     </div>
   </div>
 
-  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Analysis Station</h1>
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Probability Calculator</h1>
 
   <form id="optionForm" class="grid-form">
     <div class="ticket-row">
@@ -130,7 +130,7 @@
   </div>
 
   <footer>
-    &copy; 2026 Options Analysis Station. All rights reserved.<br>
+    &copy; 2026 Options Probability Calculator. All rights reserved.<br>
     Licensed under the MIT License. Data provided for educational purposes only.
   </footer>
 </div>
@@ -171,40 +171,37 @@ function checkPremiumWarn() {
     }
 }
 
-// 1-SECOND REFRESH LOGIC
+// OPTIMIZED 1S REFRESH LOGIC: Staggered fetching to avoid API collisions
+let macroToggle = true; 
 async function syncMacro() {
-    const fetchSymbol = async (sym) => {
-        const url = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`;
-        try {
-            let res = await fetch(url);
-            if (!res.ok) throw new Error();
-            return await res.json();
-        } catch (e) {
-            let res = await fetch(PROXY + encodeURIComponent(url));
-            return await res.json();
-        }
-    };
-
+    const sym = macroToggle ? "^VIX" : "^TNX";
+    const url = `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`;
+    
     try {
-        const [tnxData, vixData] = await Promise.all([
-            fetchSymbol("^TNX"),
-            fetchSymbol("^VIX")
-        ]);
-
-        if(tnxData.c) {
-            document.getElementById('rf').value = tnxData.c.toFixed(2);
-            document.getElementById('tnxVal').textContent = tnxData.c.toFixed(2);
+        let res;
+        try {
+            res = await fetch(url);
+            if (!res.ok) throw new Error();
+        } catch(e) {
+            res = await fetch(PROXY + encodeURIComponent(url));
         }
-        if(vixData.c) {
-            document.getElementById('vixVal').textContent = vixData.c.toFixed(2);
+        const data = await res.json();
+        
+        if (data.c) {
+            if (macroToggle) {
+                document.getElementById('vixVal').textContent = data.c.toFixed(2);
+            } else {
+                document.getElementById('rf').value = data.c.toFixed(2);
+                document.getElementById('tnxVal').textContent = data.c.toFixed(2);
+            }
             document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
         }
     } catch (e) { 
-        console.warn("Macro sync failed");
+        console.warn("Macro cycle failed");
     }
+    macroToggle = !macroToggle; // Alternate between VIX and TNX every second
 }
 
-// Initial run and then every 1 second
 syncMacro(); 
 setInterval(syncMacro, 1000);
 
