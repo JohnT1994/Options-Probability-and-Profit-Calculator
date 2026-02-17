@@ -54,7 +54,7 @@
 <div class="container">
   <div class="vix-banner">
     <div>
-      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Yahoo Finance)</div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">VIX: CBOE &nbsp;|&nbsp; TNX: US Treasury</div>
       <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
     </div>
     <div style="text-align: right;">
@@ -139,7 +139,6 @@
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
-const PROXY = "https://corsproxy.io/?";
 
 let payoffChart = null;
 let cachedChain = null;
@@ -177,27 +176,18 @@ function updateIV() {
   const r = parseFloat(document.getElementById('rf').value) / 100;
   const type = document.getElementById('type').value;
   const expiry = document.getElementById('expiry').value;
-  if (!expiry || prem <= 0 || S <= 0 || K <= 0) {
-    document.getElementById('iv').value = '';
-    return;
-  }
+  if (!expiry || prem <= 0 || S <= 0 || K <= 0) { document.getElementById('iv').value = ''; return; }
   const [day, month, year] = expiry.split('/').map(Number);
   const T = Math.max(0.001, (new Date(year, month - 1, day) - new Date()) / (1000 * 60 * 60 * 24 * 365));
-  const iv = calculateIV(S, K, T, r, prem, type).toFixed(2);
-  document.getElementById('iv').value = iv;
+  document.getElementById('iv').value = calculateIV(S, K, T, r, prem, type).toFixed(2);
 }
 
 function checkPremiumWarn() {
     const p = parseFloat(document.getElementById('premium').value);
     const warn = document.getElementById('premWarning');
     const input = document.getElementById('premium');
-    if (p <= 0) {
-        warn.style.display = 'block';
-        input.style.borderColor = '#ff4d4d';
-    } else {
-        warn.style.display = 'none';
-        input.style.borderColor = '#ccc';
-    }
+    if (p <= 0) { warn.style.display = 'block'; input.style.borderColor = '#ff4d4d'; }
+    else { warn.style.display = 'none'; input.style.borderColor = '#ccc'; }
     updateIV();
 }
 
@@ -205,52 +195,86 @@ function updateClock() {
     document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
+// ── VIX via CBOE public CDN (no key, no proxy, CORS-open) ───────────────────
 async function fetchVIX() {
-    const vixDisplay = document.getElementById('vixVal');
-    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=^VIX`;
+    const el = document.getElementById('vixVal');
     try {
-        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
-        const data = await response.json();
-        const result = data.quoteResponse.result[0];
-        if (result && result.regularMarketPrice) {
-            vixDisplay.textContent = result.regularMarketPrice.toFixed(2);
-            vixDisplay.style.color = "#a282e8";
+        // CBOE serves their own index data from a public CDN endpoint
+        const data = await fetch(
+            'https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json',
+            { cache: 'no-store' }
+        ).then(r => r.json());
+        // Response shape: { data: { close: 18.45, ... } }
+        const price = data?.data?.close ?? data?.data?.last ?? data?.close ?? data?.last;
+        if (price != null) {
+            el.textContent = parseFloat(price).toFixed(2);
+            el.style.color = '#a282e8';
         }
     } catch (err) {
-        console.error("Yahoo VIX fetch failed:", err);
+        console.error('VIX fetch failed:', err);
     }
 }
 
+// ── TNX via US Treasury par yield curve XML feed (public, CORS-open) ─────────
 async function fetchTNX() {
-    const tnxDisplay = document.getElementById('tnxVal');
-    const rfInput = document.getElementById('rf');
-    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=^TNX`;
+    const el = document.getElementById('tnxVal');
     try {
-        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
-        const data = await response.json();
-        const result = data.quoteResponse.result[0];
-        if (result && result.regularMarketPrice) {
-            const value = result.regularMarketPrice.toFixed(3);
-            tnxDisplay.textContent = value;
-            rfInput.value = value;
-            tnxDisplay.style.color = "#28a745";
+        // Treasury publishes daily par yield rates as public XML — fetch latest
+        const today = new Date();
+        const year  = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const xmlUrl =
+            `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml` +
+            `?data=daily_treas_yield_curve&field_treas_type_desc=Daily+Treasury+Par+Yield+Curve+Rates` +
+            `&year=${year}&month=${month}`;
+        const text = await fetch(xmlUrl).then(r => r.text());
+        const parser = new DOMParser();
+        const xml    = parser.parseFromString(text, 'application/xml');
+        // Each <entry> has <d:BC_10YEAR> for the 10-year rate
+        const entries = xml.querySelectorAll('entry');
+        if (entries.length > 0) {
+            const last = entries[entries.length - 1];
+            const node = last.querySelector('BC_10YEAR') || last.querySelector('[name="BC_10YEAR"]');
+            const rate = node ? parseFloat(node.textContent).toFixed(3) : null;
+            if (rate) {
+                el.textContent = rate;
+                el.style.color = '#28a745';
+                document.getElementById('rf').value = rate;
+                return;
+            }
         }
+        throw new Error('No TNX data found in XML');
     } catch (err) {
-        console.error("Yahoo TNX fetch failed:", err);
+        // Fallback: Treasury FiscalData JSON API
+        try {
+            const data = await fetch(
+                'https://api.fiscaldata.treasury.gov/services/api/v1/accounting/od/avg_interest_rates' +
+                '?fields=record_date,security_desc,avg_interest_rate_amt' +
+                '&filter=security_desc:eq:Treasury%20Notes&sort=-record_date&page[size]=1'
+            ).then(r => r.json());
+            const rate = data?.data?.[0]?.avg_interest_rate_amt;
+            if (rate != null) {
+                const v = parseFloat(rate).toFixed(3);
+                el.textContent = v;
+                el.style.color = '#28a745';
+                document.getElementById('rf').value = v;
+            }
+        } catch (err2) {
+            console.error('TNX fetch failed:', err2);
+        }
     }
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 updateClock();
 fetchVIX();
 fetchTNX();
 
 setInterval(updateClock, 1000);
-setInterval(fetchVIX, 15000); 
-setInterval(fetchTNX, 86400000);
+setInterval(fetchVIX, 15000);      // VIX every 15 seconds
+setInterval(fetchTNX, 86400000);   // TNX once per day
 
-function showGreekHelp(text) {
-  alert(text);
-}
+function showGreekHelp(text) { alert(text); }
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
@@ -274,9 +298,7 @@ async function getChain() {
             price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
         }
         organized[c.expiration_date][c.contract_type + 's'].push({
-            strike: c.strike_price,
-            marketMid: price,
-            iv: c.implied_volatility || null
+            strike: c.strike_price, marketMid: price, iv: c.implied_volatility || null
         });
     });
     cachedChain = { symbol: sym, data: organized };
@@ -285,8 +307,7 @@ async function getChain() {
 
 function updateDTE(expiryStr) {
     const [d, m, y] = expiryStr.split('/');
-    const expDate = new Date(y, m - 1, d);
-    const diff = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+    const diff = Math.ceil((new Date(y, m - 1, d) - new Date()) / (1000 * 60 * 60 * 24));
     document.getElementById('dteLabel').textContent = diff >= 0 ? `(${diff} Days Left)` : "(Expired)";
 }
 
@@ -298,11 +319,7 @@ async function showExpirationPicker() {
         const [y, m, d] = date.split('-');
         btn.className = "picker-btn";
         btn.textContent = `${d}/${m}/${y}`;
-        btn.onclick = () => { 
-            document.getElementById('expiry').value = btn.textContent; 
-            updateDTE(btn.textContent);
-            overlay.remove(); 
-        };
+        btn.onclick = () => { document.getElementById('expiry').value = btn.textContent; updateDTE(btn.textContent); overlay.remove(); };
         overlay.firstChild.appendChild(btn);
     });
 }
@@ -317,14 +334,11 @@ async function showStrikePicker() {
     const S = parseFloat(document.getElementById('stockPrice').value);
     const r = parseFloat(document.getElementById('rf').value) / 100;
     const T = Math.max(0.001, (new Date(y, m - 1, d) - new Date()) / (1000 * 60 * 60 * 24 * 365));
-
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
         let finalPrice = opt.marketMid;
-        if (finalPrice <= 0 && opt.iv) {
-            finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
-        }
+        if (finalPrice <= 0 && opt.iv) finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
         const btn = document.createElement('button');
         btn.className = "picker-btn";
         btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
@@ -332,9 +346,7 @@ async function showStrikePicker() {
             document.getElementById('strike').value = opt.strike;
             document.getElementById('premium').value = finalPrice.toFixed(2);
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
-            checkPremiumWarn();
-            updateIV();
-            overlay.remove(); 
+            checkPremiumWarn(); updateIV(); overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
     });
@@ -354,10 +366,7 @@ function createOverlay(title) {
 
 function runAnalysis() {
     const prem = parseFloat(document.getElementById('premium').value);
-    if (prem <= 0) {
-      alert("Please enter a valid premium price.");
-      return;
-    }
+    if (prem <= 0) { alert("Please enter a valid premium price."); return; }
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
     const r = parseFloat(document.getElementById('rf').value) / 100;
@@ -424,6 +433,7 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
         }
     });
 }
+
 function findIdx(arr, target) {
     let closest = arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
     return arr.indexOf(closest);
