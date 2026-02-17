@@ -91,7 +91,7 @@
           <img id="stockLogo" style="width: 24px; height: 24px; display: none; border-radius: 4px;">
           <span id="companyName" style="font-size: 0.8rem; color: #aaa;"></span>
         </div>
-        <input type="text" id="symbol" placeholder="e.g. SOFI" oninput="clearCache()" />
+        <input type="text" id="symbol" placeholder="e.g. TSLA" oninput="clearCache()" />
       </div>
       <button type="button" class="btn-fetch" onclick="fetchTicketData()">Fetch Price</button>
     </div>
@@ -136,11 +136,11 @@
     <div class="chart-container"><canvas id="payoffChart"></canvas></div>
 
     <div class="greeks-grid">
-      <div class="greek-card" title="The Speedometer..."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
-      <div class="greek-card" title="The Accelerator..."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
-      <div class="greek-card" title="The Time Decay..."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
-      <div class="greek-card" title="The Fear Gauge..."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
-      <div class="greek-card" title="The Interest Rate Tracker..."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
+      <div class="greek-card" title="The Speedometer: How much the option price moves for every $1 move in stock."><span class="greek-name">DELTA</span><span id="d" class="greek-val"></span></div>
+      <div class="greek-card" title="The Accelerator: How much the Delta changes for every $1 move in stock."><span class="greek-name">GAMMA</span><span id="g" class="greek-val"></span></div>
+      <div class="greek-card" title="The Time Decay: How much value the option loses every day just by existing."><span class="greek-name">THETA</span><span id="t" class="greek-val"></span></div>
+      <div class="greek-card" title="The Fear Gauge: How much the option price moves for every 1% change in IV."><span class="greek-name">VEGA</span><span id="v" class="greek-val"></span></div>
+      <div class="greek-card" title="The Interest Rate Tracker: Sensitivity to changes in risk-free rates."><span class="greek-name">RHO</span><span id="r" class="greek-val"></span></div>
     </div>
 
     <h3 style="font-size: 1rem; margin-top: 2rem; color: #4db8ff;">IV Scenario Table</h3>
@@ -158,11 +158,8 @@ const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
 let payoffChart = null;
 let cachedChain = null;
 
-function clearCache() { 
-    cachedChain = null; 
-    document.getElementById('companyName').textContent = '';
-    document.getElementById('stockLogo').style.display = 'none';
-}
+// Persistent caching for instant dates
+function clearCache() { cachedChain = null; document.getElementById('companyName').textContent = ''; document.getElementById('stockLogo').style.display = 'none'; }
 
 async function refreshVIX() {
     const proxy = "https://corsproxy.io/?";
@@ -190,14 +187,14 @@ async function fetchTicketData() {
 async function getChain() {
     const sym = document.getElementById('symbol').value.toUpperCase();
     if (cachedChain && cachedChain.symbol === sym) return cachedChain.data;
-    const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&limit=1000&apiKey=${POLYGON_KEY}`);
-    const data = await res.json();
+    const res = await fetch(`https://api.polygon.io/v3/reference/options/contracts?underlying_ticker=${sym}&limit=1000&apiKey=${POLYGON_KEY}`).then(r => r.json());
     const organized = {};
-    data.results.forEach(c => {
+    res.results.forEach(c => {
         if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
         organized[c.expiration_date][c.contract_type + 's'].push({
             strike: c.strike_price,
-            mid: (c.last_quote?.bid + c.last_quote?.ask) / 2 || c.last_quote?.last || 0
+            mid: (c.last_quote?.bid + c.last_quote?.ask) / 2 || c.last_quote?.last || 0,
+            iv: c.implied_volatility || null
         });
     });
     cachedChain = { symbol: sym, data: organized };
@@ -212,7 +209,7 @@ async function showExpirationPicker() {
         const [y, m, d] = date.split('-');
         btn.className = "picker-btn";
         btn.textContent = `${d}/${m}/${y}`;
-        btn.onclick = () => { document.getElementById('expiry').value = btn.textContent; overlay.remove(); };
+        btn.onclick = () => { document.getElementById('expiry').value = `${d}/${m}/${y}`; overlay.remove(); };
         overlay.firstChild.appendChild(btn);
     });
 }
@@ -221,19 +218,22 @@ async function showStrikePicker() {
     const expiry = document.getElementById('expiry').value;
     if (!expiry) return alert("Select expiry first");
     const [d, m, y] = expiry.split('/');
+    const targetDate = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
     const chain = await getChain();
     const type = document.getElementById('type').value + 's';
+    const contracts = chain[targetDate][type];
     const overlay = createOverlay("Select Strike");
-    const currentS = parseFloat(document.getElementById('stockPrice').value);
+    const currentS = parseFloat(document.getElementById('stockPrice').value) || 0;
     
-    chain[`${y}-${m}-${d}`][type].sort((a,b) => a.strike - b.strike).forEach(opt => {
+    contracts.sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - currentS) > currentS * 0.4) return;
         const btn = document.createElement('button');
         btn.className = "picker-btn";
-        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Mid: $${opt.mid.toFixed(2)}`;
+        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Mid: $${opt.mid.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
         btn.onclick = () => { 
-            document.getElementById('strike').value = opt.strike;
+            document.getElementById('strike').value = opt.strike.toFixed(2);
             document.getElementById('premium').value = opt.mid.toFixed(2);
+            if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
             overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
@@ -289,10 +289,11 @@ function runAnalysis() {
 
     const d1 = (Math.log(S/K) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
     const d2 = d1 - (iv * Math.sqrt(T));
+    const be = type === 'call' ? K + prem : K - prem;
 
     document.getElementById('pop').textContent = ((type === 'call' ? normCDF(d2) : normCDF(-d2)) * 100).toFixed(1) + "%";
     document.getElementById('resCost').textContent = "$" + (prem * 100 * qty).toLocaleString();
-    document.getElementById('resBreak').textContent = (type === 'call' ? K + prem : K - prem).toFixed(2);
+    document.getElementById('resBreak').textContent = be.toFixed(2);
     document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
     document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
 
@@ -310,14 +311,14 @@ function runAnalysis() {
     });
 
     document.getElementById('results').style.display = 'block';
-    drawChart(S, K, type, prem, qty, iv, T, r);
+    drawChart(S, K, type, prem, qty, iv, T, r, be);
 }
 
-function drawChart(S, K, type, prem, qty, iv, T, r) {
+function drawChart(S, K, type, prem, qty, iv, T, r, be) {
     const ctx = document.getElementById('payoffChart').getContext('2d');
     const labels = [], expData = [], nowData = [];
     const start = S * 0.7, end = S * 1.3;
-    for (let p = start; p <= end; p += (end - start)/50) {
+    for (let p = start; p <= end; p += (end - start)/100) {
         labels.push(p.toFixed(2));
         let intrinsic = type === 'call' ? Math.max(0, p - K) : Math.max(0, K - p);
         expData.push((intrinsic - prem) * 100 * qty);
@@ -329,20 +330,38 @@ function drawChart(S, K, type, prem, qty, iv, T, r) {
         data: {
             labels: labels,
             datasets: [
-                { label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0, 123, 255, 0.1)', pointRadius: 0 },
-                { label: 'Today (T+0)', data: nowData, borderColor: '#ffffff', borderDash: [5,5], fill: false, pointRadius: 0 }
+                { label: 'At Expiry', data: expData, borderColor: '#007bff', fill: true, backgroundColor: 'rgba(0, 123, 255, 0.1)', pointRadius: 0, borderWidth: 3 },
+                { label: 'Today (T+0)', data: nowData, borderColor: '#ffffff', borderDash: [5,5], fill: false, pointRadius: 0, borderWidth: 2 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#fff' } } },
+            interaction: { mode: 'index', intersect: false },
+            plugins: { 
+                legend: { labels: { color: '#fff' } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: $${parseFloat(ctx.raw).toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                    }
+                , backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#4db8ff', bodyColor: '#fff', borderColor: '#4db8ff', borderWidth: 1},
+                annotation: {
+                    annotations: {
+                        currPrice: { type: 'line', xMin: labels.indexOf(S.toFixed(2)) === -1 ? findClosest(labels, S) : S.toFixed(2), xMax: labels.indexOf(S.toFixed(2)) === -1 ? findClosest(labels, S) : S.toFixed(2), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000', font: {size: 10} } },
+                        breakeven: { type: 'line', xMin: findClosest(labels, be), xMax: findClosest(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff', font: {size: 10} } }
+                    }
+                }
+            },
             scales: {
-                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' } },
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' } }
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' }, title: { display: true, text: 'Stock Price ($)', color: '#888' } },
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888' }, title: { display: true, text: 'Profit / Loss ($)', color: '#888' } }
             }
         }
     });
+}
+
+function findClosest(arr, target) {
+    return arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
 }
 </script>
 </body>
