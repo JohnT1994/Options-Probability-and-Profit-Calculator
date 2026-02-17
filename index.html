@@ -175,71 +175,49 @@ function updateClock() {
     document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
-// ────────────────────────────────────────────────
-//  CHANGED: Yahoo Finance scraping for VIX
-// ────────────────────────────────────────────────
+// FIXED: Use Polygon.io API for VIX
 async function fetchVIX() {
     const vixDisplay = document.getElementById('vixVal');
-    vixDisplay.textContent = "…";
+    vixDisplay.textContent = "...";
 
-    const yahooUrl = "https://finance.yahoo.com/quote/%5EVIX";
-    const proxyUrl = PROXY + encodeURIComponent(yahooUrl);
+    const url = `https://api.polygon.io/v2/last/nbbo/I:VIX?apiKey=${POLYGON_KEY}`;
 
     try {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error("proxy http error");
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("API error");
 
-        const html = await response.text();
-
-        // Try to find the price in common Yahoo patterns (Feb 2026 structure)
-        let match = html.match(/"regularMarketPrice":\s*\{[^}]*"raw":\s*([0-9.]+)/) ||
-                    html.match(/data-testid="qsp-price"[^>]*>([\d,.]+)/) ||
-                    html.match(/"currentPrice":\s*([0-9.]+)/) ||
-                    html.match(/<fin-streamer[^>]*data-symbol="\\^VIX"[^>]*>([\d.]+)/);
-
-        if (match && match[1]) {
-            const price = parseFloat(match[1].replace(/,/g, '')).toFixed(2);
-            vixDisplay.textContent = price;
+        const data = await response.json();
+        if (data.status === "OK" && data.last && data.last.price) {
+            vixDisplay.textContent = data.last.price.toFixed(2);
         } else {
             vixDisplay.textContent = "N/A";
-            console.warn("Could not extract VIX price from Yahoo HTML");
         }
     } catch (err) {
         console.error("VIX fetch failed:", err);
-        vixDisplay.textContent = "Error";
+        vixDisplay.textContent = "N/A";
     }
 }
 
-// ────────────────────────────────────────────────
-//  CHANGED: Yahoo Finance scraping for TNX (10Y yield)
-// ────────────────────────────────────────────────
+// FIXED: Use Polygon.io API for TNX (Treasury Yields endpoint for latest 10-year yield)
 async function fetchTNX() {
     const tnxDisplay = document.getElementById('tnxVal');
     const rfInput = document.getElementById('rf');
-    tnxDisplay.textContent = "…";
+    tnxDisplay.textContent = "...";
 
-    const yahooUrl = "https://finance.yahoo.com/quote/%5ETNX";
-    const proxyUrl = PROXY + encodeURIComponent(yahooUrl);
+    const url = `https://api.polygon.io/v3/marketstatus/indicators/treasuries?limit=1&sort=date&order=desc&apiKey=${POLYGON_KEY}`;
 
     try {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error("proxy http error");
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("API error");
 
-        const html = await response.text();
-
-        let match = html.match(/"regularMarketPrice":\s*\{[^}]*"raw":\s*([0-9.]+)/) ||
-                    html.match(/data-testid="qsp-price"[^>]*>([\d,.]+)/) ||
-                    html.match(/"currentPrice":\s*([0-9.]+)/) ||
-                    html.match(/<fin-streamer[^>]*data-symbol="\\^TNX"[^>]*>([\d.]+)/);
-
-        if (match && match[1]) {
-            const value = parseFloat(match[1].replace(/,/g, '')).toFixed(3);
+        const data = await response.json();
+        if (data.results && data.results.length > 0 && data.results[0].yield_10_year) {
+            const value = data.results[0].yield_10_year.toFixed(3);
             tnxDisplay.textContent = value;
-            rfInput.value = value;   // update risk-free rate field
+            rfInput.value = value;
         } else {
             tnxDisplay.textContent = "N/A";
             rfInput.value = "4.00";
-            console.warn("Could not extract TNX yield from Yahoo HTML");
         }
     } catch (err) {
         console.error("TNX fetch failed:", err);
@@ -248,16 +226,14 @@ async function fetchTNX() {
     }
 }
 
-// ────────────────────────────────────────────────
-//  CHANGED: Timers – VIX every 1 second, TNX daily
-// ────────────────────────────────────────────────
+// Timers – VIX every 5 seconds (to avoid rate limits), TNX every minute (slow-moving)
 updateClock();
 fetchVIX();
 fetchTNX();
 
 setInterval(updateClock, 1000);
-setInterval(fetchVIX, 1000);           // every second as requested
-setInterval(fetchTNX, 24 * 60 * 60 * 1000);  // once per day
+setInterval(fetchVIX, 5000);
+setInterval(fetchTNX, 60000);
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
