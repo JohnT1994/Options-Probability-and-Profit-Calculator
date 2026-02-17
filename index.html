@@ -54,7 +54,7 @@
 <div class="container">
   <div class="vix-banner">
     <div>
-      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Yahoo via Proxy)</div>
+      <div style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Market Macro (Yahoo Finance)</div>
       <div id="vixTime" style="font-size: 0.75rem; color: #aaa;">Syncing...</div>
     </div>
     <div style="text-align: right;">
@@ -122,78 +122,27 @@
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
-      <div class="greek-card"><span class="greek-name">DELTA <span class="help" onclick="showGreekHelp('Speed')">?</span></span><span id="d" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">GAMMA <span class="help" onclick="showGreekHelp('Acceleration')">?</span></span><span id="g" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">THETA <span class="help" onclick="showGreekHelp('Time Decay')">?</span></span><span id="t" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">VEGA <span class="help" onclick="showGreekHelp('Fear Gauge')">?</span></span><span id="v" class="greek-val">--</span></div>
-      <div class="greek-card"><span class="greek-name">RHO <span class="help" onclick="showGreekHelp('Rates')">?</span></span><span id="r" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">DELTA <span class="help" onclick="showGreekHelp('Speed: How much your option price moves for every $1 move in the stock.')">?</span></span><span id="d" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">GAMMA <span class="help" onclick="showGreekHelp('Acceleration: How much your Delta increases or decreases as the stock moves.')">?</span></span><span id="g" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">THETA <span class="help" onclick="showGreekHelp('Time Decay: The daily cost or time decay you pay just for holding the contract.')">?</span></span><span id="t" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">VEGA <span class="help" onclick="showGreekHelp('Fear Gauge: Your sensitivity to expected chaos or volatility in the market.')">?</span></span><span id="v" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">RHO <span class="help" onclick="showGreekHelp('Interest Rate Tracker: The impact of changing interest rates.')">?</span></span><span id="r" class="greek-val">--</span></div>
     </div>
   </div>
 
   <footer>
-    &copy; 2026 Options Probability Calculator.
+    &copy; 2026 Options Probability Calculator. All rights reserved.<br>
+    Licensed under the MIT License. Data provided for educational purposes only.
   </footer>
 </div>
 
 <script>
 const POLYGON_KEY = "khT7kqtgtjpevl6jDgff0B0jPBr2gpqc";
 const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
-const PROXY = "https://corsproxy.io/?";
+const PROXY = "https://api.allorigins.win/raw?url=";
 
 let payoffChart = null;
 let cachedChain = null;
-
-// --- UPDATED MACRO LOGIC (YAHOO PROXY) ---
-
-async function fetchMacroData() {
-    const vixDisplay = document.getElementById('vixVal');
-    const tnxDisplay = document.getElementById('tnxVal');
-    const rfInput = document.getElementById('rf');
-    const timeDisplay = document.getElementById('vixTime');
-
-    // Yahoo API via Proxy
-    const getUrl = (s) => `${PROXY}${encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${s}`)}`;
-
-    try {
-        // Fetch VIX and TNX in parallel
-        const [vixRes, tnxRes] = await Promise.all([
-            fetch(getUrl('^VIX')),
-            fetch(getUrl('^TNX'))
-        ]);
-
-        const vixData = await vixRes.json();
-        const tnxData = await tnxRes.json();
-
-        // Update VIX
-        const vPrice = vixData.quoteResponse.result[0]?.regularMarketPrice;
-        if (vPrice) {
-            vixDisplay.textContent = vPrice.toFixed(2);
-        }
-
-        // Update TNX (10Y Yield)
-        let tPrice = tnxData.quoteResponse.result[0]?.regularMarketPrice;
-        if (tPrice) {
-            // Fix scaling: TNX is often 43.50 instead of 4.35
-            if (tPrice > 20) tPrice = tPrice / 10;
-            
-            const val = tPrice.toFixed(3);
-            tnxDisplay.textContent = val;
-            // Auto-fill input if user hasn't touched it
-            if (parseFloat(rfInput.value) === 0) rfInput.value = val;
-        }
-
-        timeDisplay.textContent = "Live Sync: " + new Date().toLocaleTimeString();
-    } catch (err) {
-        console.error("Macro fetch failed:", err);
-        timeDisplay.textContent = "Sync Error - Retrying...";
-    }
-}
-
-// Initial Call and Interval
-fetchMacroData();
-setInterval(fetchMacroData, 60000);
-
-// --- REST OF CALCULATOR LOGIC ---
 
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
@@ -228,16 +177,88 @@ function updateIV() {
   const r = parseFloat(document.getElementById('rf').value) / 100;
   const type = document.getElementById('type').value;
   const expiry = document.getElementById('expiry').value;
-  if (!expiry || prem <= 0 || S <= 0 || K <= 0) return;
+  if (!expiry || prem <= 0 || S <= 0 || K <= 0) {
+    document.getElementById('iv').value = '';
+    return;
+  }
   const [day, month, year] = expiry.split('/').map(Number);
   const T = Math.max(0.001, (new Date(year, month - 1, day) - new Date()) / (1000 * 60 * 60 * 24 * 365));
-  document.getElementById('iv').value = calculateIV(S, K, T, r, prem, type).toFixed(2);
+  const iv = calculateIV(S, K, T, r, prem, type).toFixed(2);
+  document.getElementById('iv').value = iv;
 }
 
 function checkPremiumWarn() {
     const p = parseFloat(document.getElementById('premium').value);
-    document.getElementById('premWarning').style.display = p <= 0 ? 'block' : 'none';
+    const warn = document.getElementById('premWarning');
+    const input = document.getElementById('premium');
+    if (p <= 0) {
+        warn.style.display = 'block';
+        input.style.borderColor = '#ff4d4d';
+    } else {
+        warn.style.display = 'none';
+        input.style.borderColor = '#ccc';
+    }
     updateIV();
+}
+
+function updateClock() {
+    document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
+}
+
+async function fetchVIX() {
+    const vixDisplay = document.getElementById('vixVal');
+    const yahooUrl = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX";
+    try {
+        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
+        const data = await response.json();
+        const result = data.quoteResponse.result[0];
+        if (result && result.regularMarketPrice) {
+            vixDisplay.textContent = result.regularMarketPrice.toFixed(2);
+            vixDisplay.style.color = "#a282e8";
+        } else {
+            vixDisplay.textContent = "N/A";
+        }
+    } catch (err) {
+        console.error("VIX fetch failed:", err);
+        vixDisplay.textContent = "N/A";
+    }
+}
+
+async function fetchTNX() {
+    const tnxDisplay = document.getElementById('tnxVal');
+    const rfInput = document.getElementById('rf');
+    const yahooUrl = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ETNX";
+    try {
+        const response = await fetch(PROXY + encodeURIComponent(yahooUrl));
+        const data = await response.json();
+        const result = data.quoteResponse.result[0];
+        if (result && result.regularMarketPrice) {
+            const value = result.regularMarketPrice.toFixed(3);
+            tnxDisplay.textContent = value;
+            rfInput.value = value;
+            tnxDisplay.style.color = "#28a745";
+        } else {
+            tnxDisplay.textContent = "N/A";
+            rfInput.value = "4.00";
+        }
+    } catch (err) {
+        console.error("TNX fetch failed:", err);
+        tnxDisplay.textContent = "4.00";
+        rfInput.value = "4.00";
+    }
+}
+
+// Timers – VIX every 1 second, TNX daily
+updateClock();
+fetchVIX();
+fetchTNX();
+
+setInterval(updateClock, 1000);
+setInterval(fetchVIX, 1000);
+setInterval(fetchTNX, 24 * 60 * 60 * 1000);
+
+function showGreekHelp(text) {
+  alert(text);
 }
 
 async function fetchTicketData() {
@@ -258,8 +279,14 @@ async function getChain() {
     res.results.forEach(c => {
         if (!organized[c.expiration_date]) organized[c.expiration_date] = { calls: [], puts: [] };
         let price = 0;
-        if(c.last_quote) price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
-        organized[c.expiration_date][c.contract_type + 's'].push({ strike: c.strike_price, marketMid: price, iv: c.implied_volatility });
+        if(c.last_quote) {
+            price = (c.last_quote.bid && c.last_quote.ask) ? (c.last_quote.bid + c.last_quote.ask) / 2 : (c.last_quote.last || 0);
+        }
+        organized[c.expiration_date][c.contract_type + 's'].push({
+            strike: c.strike_price,
+            marketMid: price,
+            iv: c.implied_volatility || null
+        });
     });
     cachedChain = { symbol: sym, data: organized };
     return organized;
@@ -267,8 +294,9 @@ async function getChain() {
 
 function updateDTE(expiryStr) {
     const [d, m, y] = expiryStr.split('/');
-    const diff = Math.ceil((new Date(y, m - 1, d) - new Date()) / (1000 * 60 * 60 * 24));
-    document.getElementById('dteLabel').textContent = `(${diff} Days Left)`;
+    const expDate = new Date(y, m - 1, d);
+    const diff = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+    document.getElementById('dteLabel').textContent = diff >= 0 ? `(${diff} Days Left)` : "(Expired)";
 }
 
 async function showExpirationPicker() {
@@ -277,8 +305,13 @@ async function showExpirationPicker() {
     Object.keys(chain).sort().forEach(date => {
         const btn = document.createElement('button');
         const [y, m, d] = date.split('-');
-        btn.className = "picker-btn"; btn.textContent = `${d}/${m}/${y}`;
-        btn.onclick = () => { document.getElementById('expiry').value = btn.textContent; updateDTE(btn.textContent); overlay.remove(); };
+        btn.className = "picker-btn";
+        btn.textContent = `${d}/${m}/${y}`;
+        btn.onclick = () => { 
+            document.getElementById('expiry').value = btn.textContent; 
+            updateDTE(btn.textContent);
+            overlay.remove(); 
+        };
         overlay.firstChild.appendChild(btn);
     });
 }
@@ -297,15 +330,22 @@ async function showStrikePicker() {
     const overlay = createOverlay("Select Strike");
     chain[targetDate][type + 's'].sort((a,b) => a.strike - b.strike).forEach(opt => {
         if (Math.abs(opt.strike - S) > S * 0.4) return;
-        let finalPrice = opt.marketMid || blackScholes(S, opt.strike, T, r, opt.iv || 0.5, type);
+        
+        let finalPrice = opt.marketMid;
+        if (finalPrice <= 0 && opt.iv) {
+            finalPrice = blackScholes(S, opt.strike, T, r, opt.iv, type);
+        }
+
         const btn = document.createElement('button');
         btn.className = "picker-btn";
-        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}`;
+        btn.textContent = `Strike: $${opt.strike.toFixed(2)} | Prem: $${finalPrice.toFixed(2)}` + (opt.iv ? ` | IV: ${(opt.iv*100).toFixed(1)}%` : "");
         btn.onclick = () => { 
             document.getElementById('strike').value = opt.strike;
             document.getElementById('premium').value = finalPrice.toFixed(2);
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
-            checkPremiumWarn(); overlay.remove(); 
+            checkPremiumWarn();
+            updateIV();
+            overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
     });
@@ -316,15 +356,19 @@ function createOverlay(title) {
     div.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; display:flex; align-items:center; justify-content:center;";
     const box = document.createElement('div');
     box.style.cssText = "background:#1a1a1a; padding:20px; border-radius:12px; max-height:80vh; overflow-y:auto; width:380px; border:1px solid #333;";
-    box.innerHTML = `<h3 style="color:#4db8ff;">${title}</h3>`;
-    div.appendChild(box); document.body.appendChild(div);
+    box.innerHTML = `<h3 style="margin-top:0; color:#4db8ff;">${title}</h3>`;
+    div.appendChild(box);
+    document.body.appendChild(div);
     div.onclick = (e) => { if (e.target === div) div.remove(); };
     return div;
 }
 
 function runAnalysis() {
     const prem = parseFloat(document.getElementById('premium').value);
-    if (prem <= 0) return alert("Enter premium");
+    if (prem <= 0) {
+      alert("Please enter a valid premium price.");
+      return;
+    }
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
     const r = parseFloat(document.getElementById('rf').value) / 100;
@@ -343,8 +387,7 @@ function runAnalysis() {
     document.getElementById('resBreak').textContent = be.toFixed(2);
     document.getElementById('resProfit').textContent = type === 'call' ? "Unlimited" : "$" + ((K - prem) * 100 * qty).toLocaleString();
     document.getElementById('resLoss').textContent = "$" + (prem * 100 * qty).toLocaleString();
-    
-    // Greeks
+
     document.getElementById('d').textContent = (type === 'call' ? normCDF(d1) : normCDF(d1) - 1).toFixed(3);
     document.getElementById('g').textContent = (normPDF(d1) / (S * iv * Math.sqrt(T))).toFixed(4);
     document.getElementById('t').textContent = (-(S * normPDF(d1) * iv / (2 * Math.sqrt(T)) / 365)).toFixed(3);
@@ -374,21 +417,29 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
         ]},
         options: { 
             responsive:true, maintainAspectRatio:false,
-            plugins: { annotation: { annotations: {
-                currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2 },
-                breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2] }
-            }}},
-            scales:{ x:{ticks:{color:'#888'}}, y:{ticks:{color:'#888'}}} 
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#fff' } },
+                tooltip: {
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${parseFloat(ctx.raw).toFixed(2)}` },
+                    backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#4db8ff', bodyColor: '#fff', borderColor: '#4db8ff', borderWidth: 1
+                },
+                annotation: {
+                    annotations: {
+                        currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000', yAdjust: -20 } },
+                        breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff', yAdjust: 20 } }
+                    }
+                }
+            },
+            scales:{ x:{grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#888'}}, y:{grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#888'}}} 
         }
     });
 }
-
 function findIdx(arr, target) {
     let closest = arr.reduce((prev, curr) => Math.abs(curr - target) < Math.abs(prev - target) ? curr : prev);
     return arr.indexOf(closest);
 }
 function clearCache() { cachedChain = null; }
-function showGreekHelp(t) { alert(t); }
 </script>
 </body>
 </html>
