@@ -171,43 +171,72 @@ function checkPremiumWarn() {
     }
 }
 
-// FIX: SEPARATE CLOCK AND PRICE LOGIC
 function updateClock() {
     document.getElementById('vixTime').textContent = "Live Sync: " + new Date().toLocaleTimeString();
 }
 
+// Robust VIX Fetch
 async function fetchVIX() {
-    const url = `https://finnhub.io/api/v1/quote?symbol=^VIX&token=${FINNHUB_KEY}`;
+    const url = `https://finnhub.io/api/v1/quote?symbol=^VIX&token=${FINNHUB_KEY}&t=${Date.now()}`;
+    const vixDisplay = document.getElementById('vixVal');
+    
     try {
-        let res = await fetch(url);
-        if (!res.ok) res = await fetch(PROXY + encodeURIComponent(url));
-        const data = await res.json();
-        if (data.c) {
-            document.getElementById('vixVal').textContent = data.c.toFixed(2);
+        let response = await fetch(url);
+        if (!response.ok) throw new Error("Primary fetch failed");
+        const data = await response.json();
+        if (data.c) vixDisplay.textContent = data.c.toFixed(2);
+    } catch (e) {
+        console.warn("VIX primary failed, trying proxy...");
+        try {
+            const proxyUrl = PROXY + encodeURIComponent(url);
+            let res = await fetch(proxyUrl);
+            const data = await res.json();
+            if (data.c) vixDisplay.textContent = data.c.toFixed(2);
+        } catch (err) {
+            vixDisplay.textContent = "Error";
+            console.error("VIX fetch failed completely");
         }
-    } catch (e) { console.warn("VIX fetch failed"); }
+    }
 }
 
+// Robust TNX Fetch
 async function fetchTNX() {
-    const url = `https://finnhub.io/api/v1/quote?symbol=^TNX&token=${FINNHUB_KEY}`;
+    const url = `https://finnhub.io/api/v1/quote?symbol=^TNX&token=${FINNHUB_KEY}&t=${Date.now()}`;
+    const tnxDisplay = document.getElementById('tnxVal');
+    const rfInput = document.getElementById('rf');
+
     try {
-        let res = await fetch(url);
-        if (!res.ok) res = await fetch(PROXY + encodeURIComponent(url));
-        const data = await res.json();
+        let response = await fetch(url);
+        if (!response.ok) throw new Error("Primary fetch failed");
+        const data = await response.json();
         if (data.c) {
-            document.getElementById('rf').value = data.c.toFixed(2);
-            document.getElementById('tnxVal').textContent = data.c.toFixed(2);
+            tnxDisplay.textContent = data.c.toFixed(2);
+            rfInput.value = data.c.toFixed(2);
         }
-    } catch (e) { console.warn("TNX fetch failed"); }
+    } catch (e) {
+        console.warn("TNX primary failed, trying proxy...");
+        try {
+            const proxyUrl = PROXY + encodeURIComponent(url);
+            let res = await fetch(proxyUrl);
+            const data = await res.json();
+            if (data.c) {
+                tnxDisplay.textContent = data.c.toFixed(2);
+                rfInput.value = data.c.toFixed(2);
+            }
+        } catch (err) {
+            tnxDisplay.textContent = "4.00"; 
+            rfInput.value = "4.00";
+        }
+    }
 }
 
-// Start independent timers
+// Timers Initialization
 updateClock();
 fetchVIX();
 fetchTNX();
-setInterval(updateClock, 1000); // Clock refreshes every 1 second
-setInterval(fetchVIX, 1000);   // VIX refreshes every 1 second
-setInterval(fetchTNX, 86400000); // TNX refreshes once every 24 hours
+setInterval(updateClock, 1000); 
+setInterval(fetchVIX, 15000); // 15s interval to save API quota
+setInterval(fetchTNX, 15000);
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
