@@ -255,6 +255,7 @@ async function fetchTicketData() {
     const q = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${API_KEY}`).then(r => r.json());
     if (q.c) document.getElementById('stockPrice').value = q.c.toFixed(2);
   } catch (e) { console.log("Fetch Error"); }
+  loadOptionChain(sym);
 
   currentWs = new WebSocket(`wss://ws.finnhub.io?token=${API_KEY}`);
   currentWs.onopen = () => currentWs.send(JSON.stringify({ type: 'subscribe', symbol: sym }));
