@@ -46,6 +46,7 @@
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
     .dte-badge { font-size: 0.75rem; color: #ffd700; font-weight: bold; margin-left: 10px; }
     footer { margin-top: 3rem; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
+    .help { cursor: pointer; background: #4db8ff; color: #fff; border-radius: 50%; padding: 0 4px; font-size: 0.6rem; margin-left: 5px; }
   </style>
 </head>
 <body>
@@ -101,7 +102,7 @@
     <div><label>Dividend Yield (%)</label><input type="number" id="dividend" value="0.00" readonly /></div>
     <div>
         <label>Premium (Market Price)</label>
-        <input type="number" id="premium" step="0.01" value="0.00" style="border: 2px solid #ccc;" oninput="checkPremiumWarn()"/>
+        <input type="number" id="premium" step="0.01" value="0.00" style="border: 2px solid #ccc;" oninput="checkPremiumWarn(); updateIV()"/>
         <div id="premWarning" class="warning-box">⚠️ Market price not found. Please enter manually.</div>
     </div>
     <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
@@ -121,11 +122,11 @@
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
-      <div class="greek-card" title="The Speedometer"><span class="greek-name">DELTA</span><span id="d" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Accelerator"><span class="greek-name">GAMMA</span><span id="g" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Time Decay"><span class="greek-name">THETA</span><span id="t" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Fear Gauge"><span class="greek-name">VEGA</span><span id="v" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Interest Rate Tracker"><span class="greek-name">RHO</span><span id="r" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">DELTA <span class="help" onclick="showGreekHelp('The Speedometer')">?</span></span><span id="d" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">GAMMA <span class="help" onclick="showGreekHelp('The Accelerator')">?</span></span><span id="g" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">THETA <span class="help" onclick="showGreekHelp('The Time Decay')">?</span></span><span id="t" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">VEGA <span class="help" onclick="showGreekHelp('The Fear Gauge')">?</span></span><span id="v" class="greek-val">--</span></div>
+      <div class="greek-card"><span class="greek-name">RHO <span class="help" onclick="showGreekHelp('The Interest Rate Tracker')">?</span></span><span id="r" class="greek-val">--</span></div>
     </div>
   </div>
 
@@ -158,6 +159,34 @@ function blackScholes(S, K, T, r, sigma, type) {
     return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
 }
 
+function calculateIV(S, K, T, r, prem, type) {
+  let low = 0.001, high = 5.0, mid;
+  for (let i = 0; i < 100; i++) {
+    mid = (low + high) / 2;
+    let price = blackScholes(S, K, T, r, mid, type);
+    if (price > prem) high = mid;
+    else low = mid;
+  }
+  return mid * 100;
+}
+
+function updateIV() {
+  const S = parseFloat(document.getElementById('stockPrice').value);
+  const K = parseFloat(document.getElementById('strike').value);
+  const prem = parseFloat(document.getElementById('premium').value);
+  const r = parseFloat(document.getElementById('rf').value) / 100;
+  const type = document.getElementById('type').value;
+  const expiry = document.getElementById('expiry').value;
+  if (!expiry || prem <= 0 || S <= 0 || K <= 0) {
+    document.getElementById('iv').value = '';
+    return;
+  }
+  const [day, month, year] = expiry.split('/').map(Number);
+  const T = Math.max(0.001, (new Date(year, month - 1, day) - new Date()) / (1000 * 60 * 60 * 24 * 365));
+  const iv = calculateIV(S, K, T, r, prem, type).toFixed(2);
+  document.getElementById('iv').value = iv;
+}
+
 function checkPremiumWarn() {
     const p = parseFloat(document.getElementById('premium').value);
     const warn = document.getElementById('premWarning');
@@ -169,6 +198,7 @@ function checkPremiumWarn() {
         warn.style.display = 'none';
         input.style.borderColor = '#ccc';
     }
+    updateIV();
 }
 
 function updateClock() {
@@ -199,13 +229,13 @@ async function fetchVIX() {
     }
 }
 
-// FIXED: Use Polygon.io treasury yields endpoint for latest 10-year yield
+// FIXED: Use Polygon.io for TNX
 async function fetchTNX() {
     const tnxDisplay = document.getElementById('tnxVal');
     const rfInput = document.getElementById('rf');
     tnxDisplay.textContent = "...";
 
-    const url = `https://api.polygon.io/v1/indicators/treasury_yields?limit=1&sort=-date&apiKey=${POLYGON_KEY}`;
+    const url = `https://api.polygon.io/v3/snapshot/indices?ticker.any_of=I:TNX&apiKey=${POLYGON_KEY}`;
 
     try {
         const response = await fetch(url);
@@ -213,7 +243,7 @@ async function fetchTNX() {
 
         const data = await response.json();
         if (data.results && data.results.length > 0) {
-            const value = data.results[0].yield_10_year.toFixed(3);
+            const value = data.results[0].value.toFixed(3);
             tnxDisplay.textContent = value;
             rfInput.value = value;
             tnxDisplay.style.color = "#28a745";
@@ -228,14 +258,18 @@ async function fetchTNX() {
     }
 }
 
-// Timers – VIX every 5 seconds (to avoid rate limits), TNX every minute (slow-moving)
+// Timers – VIX every 1 second (to match Yahoo real-time as closely as possible), TNX every minute
 updateClock();
 fetchVIX();
 fetchTNX();
 
 setInterval(updateClock, 1000);
-setInterval(fetchVIX, 5000);
+setInterval(fetchVIX, 1000);
 setInterval(fetchTNX, 60000);
+
+function showGreekHelp(text) {
+  alert(text);
+}
 
 async function fetchTicketData() {
     const sym = document.getElementById('symbol').value.toUpperCase();
@@ -320,6 +354,7 @@ async function showStrikePicker() {
             document.getElementById('premium').value = finalPrice.toFixed(2);
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
             checkPremiumWarn();
+            updateIV();
             overlay.remove(); 
         };
         overlay.firstChild.appendChild(btn);
@@ -339,9 +374,13 @@ function createOverlay(title) {
 }
 
 function runAnalysis() {
+    const prem = parseFloat(document.getElementById('premium').value);
+    if (prem <= 0) {
+      alert("Please enter a valid premium price.");
+      return;
+    }
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
-    const prem = parseFloat(document.getElementById('premium').value);
     const r = parseFloat(document.getElementById('rf').value) / 100;
     const type = document.getElementById('type').value;
     const qty = parseInt(document.getElementById('qty').value);
@@ -397,8 +436,8 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
                 },
                 annotation: {
                     annotations: {
-                        currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000' } },
-                        breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff' } }
+                        currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000', yAdjust: -20 } },
+                        breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff', yAdjust: 20 } }
                     }
                 }
             },
