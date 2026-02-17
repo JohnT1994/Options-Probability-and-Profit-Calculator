@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Options Analysis Station | VIX & TNX</title>
+  <title>Options Probability calculator</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.1"></script>
   <style>
@@ -42,8 +42,9 @@
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .summary-item { background: rgba(255, 255, 255, 0.05); padding: 1.2rem; border-radius: 12px; border-left: 4px solid var(--primary); }
     .greeks-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.6rem; }
-    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+    .greek-card { background: rgba(255, 255, 255, 0.08); padding: 1rem 0.5rem; border-radius: 10px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); position: relative; }
     .greek-name { font-size: 0.7rem; color: #4db8ff; font-weight: bold; display: block; margin-bottom: 4px; }
+    .greek-q { background:none; border:none; color:#4db8ff; font-size:0.65rem; cursor:pointer; margin-left:4px; }
     .dte-badge { font-size: 0.75rem; color: #ffd700; font-weight: bold; margin-left: 10px; }
     footer { margin-top: 3rem; text-align: center; font-size: 0.7rem; color: #666; line-height: 1.5; }
   </style>
@@ -60,7 +61,7 @@
       <div style="font-size: 0.65rem; color: #888;">10Y Treasury: <span id="tnxVal" style="color:#28a745; font-weight:bold;">--</span>%</div>
     </div>
   </div>
-  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Analysis Station</h1>
+  <h1 style="text-align:center; margin-top:0; letter-spacing: 1px;">Options Probability calculator</h1>
   <form id="optionForm" class="grid-form">
     <div class="ticket-row">
       <div style="flex: 1;">
@@ -96,7 +97,7 @@
     <div>
         <label>Premium (Market Price)</label>
         <input type="number" id="premium" step="0.01" value="0.00" style="border: 2px solid #ccc;" oninput="checkPremiumWarn()"/>
-        <div id="premWarning" class="warning-box">⚠️ Market price not found. Please enter manually.</div>
+        <div id="premWarning" class="warning-box">⚠️ Input premium price</div>
     </div>
     <div><label>Implied Volatility (%)</label><input type="number" id="iv" readonly /></div>
     <button type="button" class="btn-calc" onclick="runAnalysis()">Run Full Analysis</button>
@@ -113,15 +114,30 @@
         <canvas id="payoffChart"></canvas>
     </div>
     <div class="greeks-grid" style="margin-top: 20px;">
-      <div class="greek-card" title="The Speedometer: The amount the option price is expected to move based on a $1 change in the underlying stock."><span class="greek-name">DELTA</span><span id="d" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Accelerator: The rate that delta will change based on a $1 change in the stock price."><span class="greek-name">GAMMA</span><span id="g" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Time Decay: The amount the option price will decrease each day as the option approaches expiration."><span class="greek-name">THETA</span><span id="t" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Fear Gauge: The amount the option price is expected to change based on a 1% change in implied volatility."><span class="greek-name">VEGA</span><span id="v" class="greek-val">--</span></div>
-      <div class="greek-card" title="The Interest Rate Tracker: The amount the option price is expected to change based on a 1% change in interest rates."><span class="greek-name">RHO</span><span id="r" class="greek-val">--</span></div>
+      <div class="greek-card">
+        <span class="greek-name">DELTA <button class="greek-q" onclick="showGreekInfo(0)">?</button></span>
+        <span id="d" class="greek-val">--</span>
+      </div>
+      <div class="greek-card">
+        <span class="greek-name">GAMMA <button class="greek-q" onclick="showGreekInfo(1)">?</button></span>
+        <span id="g" class="greek-val">--</span>
+      </div>
+      <div class="greek-card">
+        <span class="greek-name">THETA <button class="greek-q" onclick="showGreekInfo(2)">?</button></span>
+        <span id="t" class="greek-val">--</span>
+      </div>
+      <div class="greek-card">
+        <span class="greek-name">VEGA <button class="greek-q" onclick="showGreekInfo(3)">?</button></span>
+        <span id="v" class="greek-val">--</span>
+      </div>
+      <div class="greek-card">
+        <span class="greek-name">RHO <button class="greek-q" onclick="showGreekInfo(4)">?</button></span>
+        <span id="r" class="greek-val">--</span>
+      </div>
     </div>
   </div>
   <footer>
-    &copy; 2026 Options Analysis Station. All rights reserved.<br>
+    &copy; 2026 Options Probability calculator. All rights reserved.<br>
     Licensed under the MIT License. Data provided for educational purposes only.
   </footer>
 </div>
@@ -131,6 +147,19 @@ const FINNHUB_KEY = "d6a41gpr01qsjlb9lhj0d6a41gpr01qsjlb9lhjg";
 const PROXY = "https://corsproxy.io/?";
 let payoffChart = null;
 let cachedChain = null;
+
+const greekDescriptions = [
+  "The Speedometer: The amount the option price is expected to move based on a $1 change in the underlying stock.",
+  "The Accelerator: The rate that delta will change based on a $1 change in the stock price.",
+  "The Time Decay: The amount the option price will decrease each day as the option approaches expiration.",
+  "The Fear Gauge: The amount the option price is expected to change based on a 1% change in implied volatility.",
+  "The Interest Rate Tracker: The amount the option price is expected to change based on a 1% change in interest rates."
+];
+
+function showGreekInfo(idx) {
+  alert(greekDescriptions[idx]);
+}
+
 const normPDF = (x) => Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
 const normCDF = (x) => {
     const t = 1 / (1 + 0.2316419 * Math.abs(x));
@@ -145,7 +174,6 @@ function blackScholes(S, K, T, r, sigma, type) {
     return type === 'call' ? S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2) : K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
 }
 
-// NEW: Implied Volatility solver (bisection method) - uses only the existing Black-Scholes
 function calculateImpliedVolatility(S, K, T, r, marketPrice, type) {
     if (marketPrice <= 0 || T <= 0) return 0;
     let low = 0.0001;
@@ -160,7 +188,6 @@ function calculateImpliedVolatility(S, K, T, r, marketPrice, type) {
     return (low + high) / 2;
 }
 
-// NEW: Auto-solve IV when strike + expiry + premium are all provided
 function autoCalculateIV() {
     const Sstr = document.getElementById('stockPrice').value;
     const Kstr = document.getElementById('strike').value;
@@ -188,10 +215,11 @@ function autoCalculateIV() {
 }
 
 function checkPremiumWarn() {
-    const p = parseFloat(document.getElementById('premium').value);
-    const warn = document.getElementById('premWarning');
     const input = document.getElementById('premium');
-    if (p <= 0) {
+    const warn = document.getElementById('premWarning');
+    const pVal = input.value.trim();
+    const p = parseFloat(pVal);
+    if (!pVal || isNaN(p) || p <= 0) {
         warn.style.display = 'block';
         input.style.borderColor = '#ff4d4d';
     } else {
@@ -200,7 +228,6 @@ function checkPremiumWarn() {
     }
 }
 
-// UPDATED: Live clock every second + "Data from Yahoo Finance"
 function updateLiveClock() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { 
@@ -214,17 +241,20 @@ function updateLiveClock() {
 
 async function syncMacro() {
     try {
-        const res = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^TNX"));
-        const data = await res.json();
-        const rate = data.chart.result[0].meta.regularMarketPrice;
+        // === FIXED: Use the exact same quote API Yahoo's own page uses ===
+        const tnxRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5ETNX"));
+        const tnxData = await tnxRes.json();
+        const rate = tnxData.quoteResponse.result[0].regularMarketPrice;
         document.getElementById('rf').value = rate.toFixed(2);
         document.getElementById('tnxVal').textContent = rate.toFixed(2);
        
-        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/^VIX"));
+        const vixRes = await fetch(PROXY + encodeURIComponent("https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EVIX"));
         const vixData = await vixRes.json();
-        document.getElementById('vixVal').textContent = vixData.chart.result[0].meta.regularMarketPrice.toFixed(2);
-        // REMOVED the old vixTime line - now handled by live clock
-    } catch (e) { console.warn("Macro sync failed"); }
+        const vixPrice = vixData.quoteResponse.result[0].regularMarketPrice;
+        document.getElementById('vixVal').textContent = vixPrice.toFixed(2);
+    } catch (e) { 
+        console.warn("Macro sync failed – using cached values if available");
+    }
 }
 
 syncMacro(); 
@@ -280,7 +310,7 @@ async function showExpirationPicker() {
             document.getElementById('expiry').value = btn.textContent;
             updateDTE(btn.textContent);
             overlay.remove();
-            autoCalculateIV();   // NEW: auto IV after expiry selected
+            autoCalculateIV();
         };
         overlay.firstChild.appendChild(btn);
     });
@@ -313,7 +343,7 @@ async function showStrikePicker() {
             if (opt.iv) document.getElementById('iv').value = (opt.iv * 100).toFixed(2);
             checkPremiumWarn();
             overlay.remove();
-            autoCalculateIV();   // NEW: auto IV after strike/premium selected
+            autoCalculateIV();
         };
         overlay.firstChild.appendChild(btn);
     });
@@ -332,9 +362,16 @@ function createOverlay(title) {
 }
 
 function runAnalysis() {
+    checkPremiumWarn();
+    const premInput = document.getElementById('premium').value.trim();
+    if (!premInput || parseFloat(premInput) <= 0) {
+        alert("⚠️ Please input premium price");
+        return;
+    }
+
     const S = parseFloat(document.getElementById('stockPrice').value);
     const K = parseFloat(document.getElementById('strike').value);
-    const prem = parseFloat(document.getElementById('premium').value);
+    const prem = parseFloat(premInput);
     const r = parseFloat(document.getElementById('rf').value) / 100;
     const type = document.getElementById('type').value;
     const qty = parseInt(document.getElementById('qty').value);
@@ -386,8 +423,8 @@ function drawChart(S, K, type, prem, qty, iv, T, r, be) {
                 },
                 annotation: {
                     annotations: {
-                        currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000' } },
-                        breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff' } }
+                        currPrice: { type: 'line', xMin: findIdx(labels, S), xMax: findIdx(labels, S), borderColor: '#ffcc00', borderWidth: 2, label: { display: true, content: 'Current Price', backgroundColor: '#ffcc00', color: '#000', yAdjust: -25 } },
+                        breakeven: { type: 'line', xMin: findIdx(labels, be), xMax: findIdx(labels, be), borderColor: '#ff4d4d', borderDash: [2, 2], borderWidth: 2, label: { display: true, content: 'Breakeven', backgroundColor: '#ff4d4d', color: '#fff', yAdjust: 25 } }
                     }
                 }
             },
@@ -403,11 +440,9 @@ function findIdx(arr, target) {
 
 function clearCache() { cachedChain = null; }
 
-// NEW: Live clock + auto IV listeners
 setInterval(updateLiveClock, 1000);
-updateLiveClock(); // initial
+updateLiveClock();
 
-// Auto IV on manual input (strike/premium) and after picker changes
 document.getElementById('strike').addEventListener('input', autoCalculateIV);
 document.getElementById('premium').addEventListener('input', autoCalculateIV);
 document.getElementById('expiry').addEventListener('change', autoCalculateIV);
